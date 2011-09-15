@@ -140,9 +140,32 @@ def start_event_loop_qt4(app=None):
         app._in_event_loop = True
 
 #-----------------------------------------------------------------------------
+# Cocoa
+#-----------------------------------------------------------------------------
+
+def get_app_cocoa(*args, **kwargs):
+    """Create a new Cocoa app or return an existing one."""
+    from AppKit import NSApplication
+    return NSApplication.sharedApplication()
+
+def is_event_loop_running_cocoa(app=None):
+    """Is the Cocoa event loop running."""
+    if app is None:
+        app = get_app_cocoa()
+    return app.isRunning()
+
+def start_event_loop_cocoa(app=None):
+    from PyObjCTools import AppHelper
+    if app is None:
+        app = get_app_cocoa()
+    if not is_event_loop_running_cocoa(app):
+        AppHelper.runEventLoop()
+
+#-----------------------------------------------------------------------------
 # Tk
 #-----------------------------------------------------------------------------
 
 #-----------------------------------------------------------------------------
 # gtk
 #-----------------------------------------------------------------------------
+

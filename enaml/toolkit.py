@@ -177,7 +177,7 @@ def wx_toolkit():
 
 
 def qt_toolkit():
-    """ Creates and return a toolkit object for the PySide Qt backend.
+    """ Creates and return a toolkit object for the Qt backend.
 
     """
     from .util.guisupport import get_app_qt4, start_event_loop_qt4
@@ -210,3 +210,21 @@ def qt_toolkit():
 
     return Toolkit(items=items, prime=get_app_qt4, start=start_event_loop_qt4,
         style_sheet=QT_STYLE_SHEET, utils=utils)
+
+
+def cocoa_toolkit():
+    """ Creates and returns a toolkit object for the Cocoa backend.
+    """
+    from .util.guisupport import get_app_qt4, start_event_loop_qt4
+    from .widgets.cocoa import constructors as ctors
+    from .widgets.cocoa.styling import COCOA_STYLE_SHEET
+    
+    items = {
+        'Window': ctors.CocoaWindowCtor,
+    }
+    
+    utils = {}
+
+    return Toolkit(items=items, prime=get_app_qt4, start=start_event_loop_qt4,
+        style_sheet=COCOA_STYLE_SHEET, utils=utils)
+    
