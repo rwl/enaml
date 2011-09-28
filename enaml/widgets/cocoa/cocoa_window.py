@@ -1,5 +1,6 @@
 from Foundation import NSMakeRect
-from AppKit import NSWindow
+from AppKit import NSWindow, NSTitledWindowMask, NSClosableWindowMask, NSMiniaturizableWindowMask, \
+    NSResizableWindowMask
 
 from traits.api import implements, Instance
 
@@ -8,6 +9,8 @@ from .cocoa_component import CocoaComponent
 from ..window import IWindowImpl
 
 from ...enums import Modality
+
+from ...util.guisupport import get_app_cocoa
 
 
 class CocoaWindow(CocoaComponent):
@@ -36,9 +39,10 @@ class CocoaWindow(CocoaComponent):
         """ Intializes the attributes on the QWindow.
 
         """
-        pass
-        #self.set_title(self.parent.title)
-        #self.set_modality(self.parent.modality)
+        self.widget.setStyleMask_(NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask |
+            NSResizableWindowMask)
+        self.set_title(self.parent.title)
+        
 
     def create_style_handler(self):
         """ Creates and sets the window style handler.
@@ -64,6 +68,9 @@ class CocoaWindow(CocoaComponent):
         
         """
         if self.widget:
+            modality = self.parent.modality
+            if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
+                self.start_modal()
             self.widget.makeKeyAndOrderFront_(None)
 
     def hide(self):
@@ -71,7 +78,10 @@ class CocoaWindow(CocoaComponent):
 
         """
         if self.widget:
-            self.widget.hide()
+            modality = self.parent.modality
+            if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
+                self.stop_modal()
+            self.widget.orderOut_()
 
     def parent_title_changed(self, title):
         """ The change handler for the 'title' attribute. Not meant for 
@@ -85,7 +95,10 @@ class CocoaWindow(CocoaComponent):
         for public consumption.
 
         """
-        self.set_modality(modality)
+        if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
+            self.start_modal()
+        else:
+            self.stop_modal()
 
     #---------------------------------------------------------------------------
     # Implementation
@@ -96,18 +109,22 @@ class CocoaWindow(CocoaComponent):
 
         """
         if self.widget:
-            self.widget.setWindowTitle(title)
+            self.widget.setTitle_(title)
     
-    def set_modality(self, modality):
-        """ Sets the modality of the QMainWindow. Not meant for public
-        consumption.
-
+    def start_modal(self):
+        """ Puts the application into Modal state using this window.
+        
+        Not meant for public consumption.
         """
         if self.widget:
-            if modality == Modality.APPLICATION_MODAL:
-                self.widget.setWindowModality(QtCore.Qt.ApplicationModal)
-            elif modality == Modality.WINDOW_MODAL:
-                self.widget.setWindowModality(QtCore.Qt.WindowModal)
-            else:
-                self.widget.setWindowModality(QtCore.Qt.NonModal)
-
+            app = self.cocoa_get_app()
+            app.runModalForWindow_(self.widget)
+            
+    def stop_modal(self):
+        """ If the application was in Modal state, this clears it.
+        
+        Not meant for public consumption.
+        """
+        if self.widget:
+            app = self.cocoa_get_app()
+            app.stopModal()

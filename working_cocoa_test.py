@@ -19,7 +19,7 @@ import datetime
 from enaml.enums import Direction
 
 Window:
-    pass
+    title = model.window_title
 """
 
 class Model(HasTraits):
