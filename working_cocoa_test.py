@@ -20,6 +20,10 @@ from enaml.enums import Direction
 
 Window:
     title = model.window_title
+    Panel:
+        Group:
+            Label:
+                text = model.message
 """
 
 class Model(HasTraits):

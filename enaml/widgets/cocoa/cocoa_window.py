@@ -1,6 +1,7 @@
 from Foundation import NSMakeRect
-from AppKit import NSWindow, NSTitledWindowMask, NSClosableWindowMask, NSMiniaturizableWindowMask, \
-    NSResizableWindowMask
+from AppKit import NSWindow, NSView, \
+    NSTitledWindowMask, NSClosableWindowMask, NSMiniaturizableWindowMask, NSResizableWindowMask \
+    #NSViewWidthSizeable, NSViewHeightSizable
 
 from traits.api import implements, Instance
 
@@ -25,6 +26,8 @@ class CocoaWindow(CocoaComponent):
 
     """
     implements(IWindowImpl)
+    
+    _layout = Instance(NSView)
 
     #---------------------------------------------------------------------------
     # IWindowImpl interface
@@ -61,7 +64,11 @@ class CocoaWindow(CocoaComponent):
         a vertical box layout.
 
         """
-        pass
+        self._layout = NSView.alloc().init()
+        #self._layout.setAutoresizingMask_(NSViewWidthSizeable | NSViewHeightSizable)
+        for child in self.child_widgets():
+            self._layout.addSubview_(child)
+        self.widget.setContentView_(self._layout)
 
     def show(self):
         """ Displays the window to the screen.

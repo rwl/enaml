@@ -221,6 +221,10 @@ def cocoa_toolkit():
     
     items = {
         'Window': ctors.CocoaWindowCtor,
+        'Panel': ctors.CocoaPanelCtor,
+        'Group': ctors.CocoaGroupCtor,
+        'VGroup': ctors.CocoaVGroupCtor,
+        'Label': ctors.CocoaLabelCtor,
     }
     
     utils = {}
