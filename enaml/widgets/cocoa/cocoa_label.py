@@ -1,4 +1,6 @@
-from AppKit import NSTextField
+from Foundation import NSMakeRect
+from AppKit import NSTextField, NSViewWidthSizable, NSViewHeightSizable
+
 
 from traits.api import implements
 
@@ -34,7 +36,11 @@ class CocoaLabel(CocoaControl):
 
         """
         self.widget.setEditable_(False)
-        self.set_label(self.parent.text) 
+        self.widget.setBordered_(False)
+        self.widget.setDrawsBackground_(False)
+        self.widget.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        self.set_label(self.parent.text)
+        
 
     def parent_text_changed(self, text):
         """ The change handler for the 'text' attribute. Not meant for

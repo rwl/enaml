@@ -24,6 +24,8 @@ Window:
         Group:
             Label:
                 text = model.message
+            Label:
+                text = "More text"
 """
 
 class Model(HasTraits):

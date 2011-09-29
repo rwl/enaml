@@ -1,4 +1,6 @@
-from AppKit import NSView
+from Foundation import NSMakeRect
+from AppKit import NSView, NSViewWidthSizable, NSViewHeightSizable
+
 
 from traits.api import implements
 
@@ -27,12 +29,14 @@ class CocoaPanel(CocoaComponent):
 
         """
         self.widget = NSView.alloc().init()
+        #self.widget.setFrame_(NSMakeRect(0,0,200,200))
     
     def initialize_widget(self):
         """ There is nothing to initialize on a panel.
 
         """
         pass
+        self.widget.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
 
     def create_style_handler(self):
         """ Creates and sets the window style handler.
@@ -54,6 +58,8 @@ class CocoaPanel(CocoaComponent):
 
         """
         layout = NSView.alloc().init()
+        #layout.setFrame_(NSMakeRect(0,0,200,200))
+        layout.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
         for child in self.child_widgets():
             layout.addSubview_(child)
         self.widget.addSubview_(layout)

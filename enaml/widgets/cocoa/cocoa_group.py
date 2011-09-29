@@ -1,5 +1,6 @@
 from Foundation import NSMakeRect
-from AppKit import NSView
+from AppKit import NSView, NSViewWidthSizable, NSViewHeightSizable
+
 
 from traits.api import implements
 
@@ -30,7 +31,8 @@ class CocoaGroup(CocoaContainer):
 
         """
         self.widget = self.make_layout(self.parent.direction)
-        
+        #self.widget.setFrame_(NSMakeRect(0,0,200,200))
+
     def initialize_widget(self):
         """ Nothing to initialize on a group.
 
@@ -42,6 +44,7 @@ class CocoaGroup(CocoaContainer):
 
         """
         layout = self.widget
+        layout.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
         for child in self.child_widgets():
             layout.addSubview_(child)
 

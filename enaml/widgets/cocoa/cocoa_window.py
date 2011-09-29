@@ -1,7 +1,7 @@
 from Foundation import NSMakeRect
 from AppKit import NSWindow, NSView, \
-    NSTitledWindowMask, NSClosableWindowMask, NSMiniaturizableWindowMask, NSResizableWindowMask \
-    #NSViewWidthSizeable, NSViewHeightSizable
+    NSTitledWindowMask, NSClosableWindowMask, NSMiniaturizableWindowMask, NSResizableWindowMask, \
+    NSViewWidthSizable, NSViewHeightSizable
 
 from traits.api import implements, Instance
 
@@ -37,7 +37,8 @@ class CocoaWindow(CocoaComponent):
 
         """
         self.widget = NSWindow.alloc().init()
-    
+        self.widget.setFrame_display_(NSMakeRect(100,100,200,250), False)
+
     def initialize_widget(self):
         """ Intializes the attributes on the QWindow.
 
@@ -65,7 +66,8 @@ class CocoaWindow(CocoaComponent):
 
         """
         self._layout = NSView.alloc().init()
-        #self._layout.setAutoresizingMask_(NSViewWidthSizeable | NSViewHeightSizable)
+        #self._layout.setFrame_(NSMakeRect(0,0,200,200))
+        self._layout.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
         for child in self.child_widgets():
             self._layout.addSubview_(child)
         self.widget.setContentView_(self._layout)
@@ -79,6 +81,7 @@ class CocoaWindow(CocoaComponent):
             if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
                 self.start_modal()
             self.widget.makeKeyAndOrderFront_(None)
+            self.widget.display()
 
     def hide(self):
         """ Hide the window from the screen.
