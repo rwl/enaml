@@ -73,7 +73,7 @@ class Window(Component):
         # XXX we shouldn't need to .setup() every time. And get rid 
         # of this qt testing hack
         self.setup()
-        self.abstract_obj.widget.resize(640, 480)
+        #self.abstract_obj.widget.resize(640, 480)
         self.abstract_obj.show()
 
     def hide(self):

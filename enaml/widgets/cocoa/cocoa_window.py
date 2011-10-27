@@ -7,17 +7,17 @@ from traits.api import implements, Instance
 
 from .cocoa_component import CocoaComponent
 
-from ..window import IWindowImpl
+from ..window import AbstractTkWindow
 
 from ...enums import Modality
 
 from ...util.guisupport import get_app_cocoa
 
 
-class CocoaWindow(CocoaComponent):
-    """ A Qt implementation of a Window.
+class CocoaWindow(CocoaComponent, AbstractTkWindow):
+    """ A Cocoa implementation of a Window.
 
-    QtWindow uses a QFrame to create a simple top level window which
+    CocoaWindow uses a QFrame to create a simple top level window which
     contains other child widgets and layouts.
 
     See Also
@@ -25,59 +25,45 @@ class CocoaWindow(CocoaComponent):
     Window
 
     """
-    implements(IWindowImpl)
-    
-    _layout = Instance(NSView)
-
-    #---------------------------------------------------------------------------
-    # IWindowImpl interface
-    #---------------------------------------------------------------------------
-    def create_widget(self):
+    #--------------------------------------------------------------------------
+    # Setup methods
+    #--------------------------------------------------------------------------
+    def create(self):
         """ Creates the underlying QWindow control.
 
         """
         self.widget = NSWindow.alloc().init()
         self.widget.setFrame_display_(NSMakeRect(100,100,200,250), False)
-
-    def initialize_widget(self):
+        self._view = NSView.alloc().init()
+    
+    def initialize(self):
         """ Intializes the attributes on the QWindow.
 
         """
+        super(CocoaWindow, self).initialize()
+
+        self._view.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
+        self.widget.setContentView_(self._view)
+
         self.widget.setStyleMask_(NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask |
             NSResizableWindowMask)
-        self.set_title(self.parent.title)
-        
+        shell = self.shell_obj
+        self.set_title(shell.title)
+        if shell.modality == Modality.APPLICATION_MODAL or shell.modality == Modality.WINDOW_MODAL:
+            self.start_modal()
+        else:
+            self.stop_modal()
 
-    def create_style_handler(self):
-        """ Creates and sets the window style handler.
-
-        """
-        pass
-    
-    def initialize_style(self):
-        """ Initializes the style for the window.
-
-        """
-        pass
-
-    def layout_child_widgets(self):
-        """ Arranges the children of the QWindow (typically only one) in
-        a vertical box layout.
-
-        """
-        self._layout = NSView.alloc().init()
-        #self._layout.setFrame_(NSMakeRect(0,0,200,200))
-        self._layout.setAutoresizingMask_(NSViewWidthSizable | NSViewHeightSizable)
-        for child in self.child_widgets():
-            self._layout.addSubview_(child)
-        self.widget.setContentView_(self._layout)
-
+    #--------------------------------------------------------------------------
+    # Implementation
+    #--------------------------------------------------------------------------
     def show(self):
         """ Displays the window to the screen.
         
         """
         if self.widget:
-            modality = self.parent.modality
+            shell = self.shell_obj
+            modality = shell.modality
             if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
                 self.start_modal()
             self.widget.makeKeyAndOrderFront_(None)
@@ -88,19 +74,20 @@ class CocoaWindow(CocoaComponent):
 
         """
         if self.widget:
-            modality = self.parent.modality
+            shell = self.shell_obj
+            modality = shell.modality
             if modality == Modality.APPLICATION_MODAL or modality == Modality.WINDOW_MODAL:
                 self.stop_modal()
             self.widget.orderOut_()
 
-    def parent_title_changed(self, title):
+    def shell_title_changed(self, title):
         """ The change handler for the 'title' attribute. Not meant for 
         public consumption.
 
         """
         self.set_title(title)
     
-    def parent_modality_changed(self, modality):
+    def shell_modality_changed(self, modality):
         """ The change handler for the 'modality' attribute. Not meant 
         for public consumption.
 
@@ -127,7 +114,7 @@ class CocoaWindow(CocoaComponent):
         Not meant for public consumption.
         """
         if self.widget:
-            app = self.cocoa_get_app()
+            app = get_app_cocoa()
             app.runModalForWindow_(self.widget)
             
     def stop_modal(self):
@@ -136,5 +123,5 @@ class CocoaWindow(CocoaComponent):
         Not meant for public consumption.
         """
         if self.widget:
-            app = self.cocoa_get_app()
+            app = get_app_cocoa()
             app.stopModal()

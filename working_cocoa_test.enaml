@@ -1,0 +1,12 @@
+
+defn MainWindow(model):
+    Window:
+        title = model.window_title
+        Label:
+            text = model.message
+            constraints = [
+                left == 10,
+                top == 10,
+                width == 100,
+                height == 30,
+            ]

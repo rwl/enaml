@@ -312,6 +312,7 @@ def wx_toolkit():
 def cocoa_toolkit():
     """ Creates and returns a toolkit object for the Cocoa backend.
     """
+    from .operators import OPERATORS
     from .widgets.cocoa.constructors import COCOA_CONSTRUCTORS
     from .util.guisupport import get_app_cocoa, start_event_loop_cocoa
     from .widgets.cocoa.styling import COCOA_STYLE_SHEET

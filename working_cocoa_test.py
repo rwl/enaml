@@ -8,18 +8,13 @@ import random
 
 from traits.api import HasTraits, Str
 
-from enaml.factory import EnamlFactory
-from enaml.toolkit import cocoa_toolkit
+import enaml
 
-enml = """
-import math
-import random
-import datetime
+with enaml.imports():
+    from working_cocoa_test import MainWindow
 
-from enaml.enums import Direction
 
-Window:
-    title = model.window_title
+rest = """
     Panel:
         Group:
             Label:
@@ -43,10 +38,7 @@ class Model(HasTraits):
         return ''.join(l)
 
 
-fact = EnamlFactory(StringIO(enml), toolkit=cocoa_toolkit())
-
-view = fact(model=Model())
-
+view = MainWindow(model=Model())
 view.show()
 
 
