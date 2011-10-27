@@ -1,122 +1,147 @@
-from Foundation import NSObject
+from .cocoa_base_component import CocoaBaseComponent
 
-from traits.api import implements, HasStrictTraits, WeakRef, Instance
+from ..component import AbstractTkComponent
 
-from ..component import Component, IComponentImpl
+from Foundation import NSMakeRect
+from AppKit import NSView, NSViewWidthSizable, NSViewHeightSizable
 
-class CocoaComponent(HasStrictTraits):
-    """ A Cocoa4 implementation of Component.
+
+class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
+    """ A Cocoa implementation of Component.
 
     A CocoaComponent is not meant to be used directly. It provides some 
     common functionality that is useful to all widgets and should 
-    serve as the base class for all other classes.
-
-    See Also
-    --------
-    Component
-
+    serve as the base class for all other classes. Note that this 
+    is not a HasTraits class.
     """
-    implements(IComponentImpl)
+    #: The Cocoa widget created by the component
+    widget = None
 
-    #---------------------------------------------------------------------------
-    # IComponentImpl interface
-    #---------------------------------------------------------------------------
-    parent = WeakRef(Component)
-
-    def set_parent(self, parent):
-        """ Sets the parent component to the given parent.
-
-        """
-        self.parent = parent
+    #--------------------------------------------------------------------------
+    # Setup Methods
+    #--------------------------------------------------------------------------
+    def create(self):
+        self.widget = NSView.alloc().init()
+        self._view = self.widget
+    
+    def initialize(self):
+        for child in self.child_widgets():
+            self._view.addSubview_(child)
+    
+    def bind(self):
+        super(CocoaComponent, self).bind()
         
-    def create_widget(self):
-        """ Creates the underlying wx widget. Must be implemented by 
-        subclasses.
+        # This is a hack at the moment
+        if hasattr(self.widget, 'resized'):
+            self.widget.resized.connect(self.on_resize)
 
-        """
-        raise NotImplementedError
-    
-    def initialize_widget(self):
-        """ Initializes the attribtues of a wiget. Must be implemented
-        by subclasses.
-
-        """
-        raise NotImplementedError
-    
-    def create_style_handler(self):
-        """ Creates and sets the style handler for the widget. Must
-        be implemented by subclasses.
-
-        """
-        raise NotImplementedError
-
-    def initialize_style(self):
-        """ Initializes the style and style handler of a widget. Must
-        be implemented by subclasses.
-
-        """
-        raise NotImplementedError
-
-    def layout_child_widgets(self):
-        """ Arranges the children of this component. Must be implemented
-        by subclasses.
-
-        """
-        raise NotImplementedError
-    
+    #--------------------------------------------------------------------------
+    # Implementation
+    #--------------------------------------------------------------------------
+    @property
     def toolkit_widget(self):
-        """ Returns the toolkit specific widget for this component.
+        """ A property that returns the toolkit specific widget for this
+        component.
 
         """
         return self.widget
     
-    def parent_name_changed(self, name):
-        """ The change handler for the 'name' attribute on the parent.
-        QtComponent doesn't care about the name. Subclasses should
-        reimplement if they need that info.
+    def size(self):
+        """ Return the size of the internal toolkit widget as a 
+        (width, height) tuple of integers.
 
         """
-        pass    
+        width, height = self.widget.Frame.size
+        return (width, height)
+    
+    def size_hint(self):
+        """ Returns a (width, height) tuple of integers which represent
+        the suggested size of the widget for its current state. This 
+        value is used by the layout manager to determine how much 
+        space to allocate the widget.
 
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------
-    widget = Instance(NSObject)
-        
+        """
+        return (400, 400)
+
+    def resize(self, width, height):
+        """ Resizes the internal toolkit widget according the given
+        width and height integers.
+
+        """
+        self.widget.setFrameSize_(width, height)
+    
+    def pos(self):
+        """ Returns the position of the internal toolkit widget as an 
+        (x, y) tuple of integers. The coordinates should be relative to
+        the origin of the widget's parent.
+
+        """
+        return self.geometry()[:2]
+    
+    def move(self, x, y):
+        """ Moves the internal toolkit widget according to the given
+        x and y integers which are relative to the origin of the
+        widget's parent.
+
+        """
+        super_w, super_h = self.widget.superview.Frame.size
+        width, height = self.widget.Frame.size
+        self.widget.setFrameOrigin_(x, super_h-y-height)
+    
+    def geometry(self):
+        """ Returns an (x, y, width, height) tuple of geometry info
+        for the internal toolkit widget. The semantic meaning of the
+        values are the same as for the 'size' and 'pos' methods.
+
+        """
+        (x, y), (width, height) = self.widget.Frame
+        super_w, super_h = self.widget.superview.Frame.size
+        return (x, super_h-y-height, width, height)
+    
+    def set_geometry(self, x, y, width, height):
+        """ Sets the geometry of the internal widget to the given 
+        x, y, width, and height values. The semantic meaning of the
+        values is the same as for the 'resize' and 'move' methods.
+
+        """
+        print 'setting geometry'
+        super_w, super_h = self.widget.superview.Frame.size
+        self.widget.setFrame_(NSMakeRect(x, super_h-y-height, width, height))
+    
+    def on_resize(self):
+        # should handle the widget resizing by telling something
+        # that things need to be relayed out
+        pass
+
+    #--------------------------------------------------------------------------
+    # Convienence methods
+    #--------------------------------------------------------------------------
     def parent_widget(self):
-        """ Returns the logical QWidget parent for this component. 
+        """ Returns the logical NSResponder parent for this component. 
 
         Since some parents may wrap non-Widget objects, this method will
-        walk up the tree of parent components until a QWindow is found
-        or None if no QWindow is found.
-
-        Arguments
-        ---------
-        None
+        walk up the tree of components until a NSResponder is found or None 
+        if no NSResponder is found.
 
         Returns
         -------
-        result : QWidget or None
+        result : NSResponder or None
 
         """
-        # Our parent is a Component, and the parent of 
-        # a Component is also a Component
-        parent = self.parent
-        while parent:
-            widget = parent.toolkit_widget()
-            return widget
-            #if isinstance(widget, QtGui.QWidget):
-            #    return widget
-            #parent = parent.parent
+        # XXX do we need to do this still? i.e. can we now have a parent
+        # that doesn't create a widget???
+        shell_parent = self.shell_obj.parent
+        while shell_parent:
+            widget = shell_parent.toolkit_widget
+            if isinstance(widget, NSResponder):
+                return widget
+            shell_parent = shell_parent.parent
         
     def child_widgets(self):
-        """ Iterates over the parent's children and yields the 
+        """ Iterates over the shell widget's children and yields the 
         toolkit widgets for those children.
 
         """
-        for child in self.parent.children:
-            yield child.toolkit_widget()
+        for child in self.shell_obj.children:
+            yield child.toolkit_widget
 
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------
