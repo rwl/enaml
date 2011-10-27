@@ -1,9 +1,14 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from traits.api import Event, Enum, Bool, Instance, Property
 
 from .window import IWindowImpl, Window
 
 from ..enums import DialogResult
 
+# XXX punting for now, but this needs to be brought up-to-date
 
 class IDialogImpl(IWindowImpl):
 
@@ -74,9 +79,7 @@ class Dialog(Window):
 
     _result = Enum(*DialogResult.values())
 
-    #---------------------------------------------------------------------------
-    # Overridden parent class traits
-    #---------------------------------------------------------------------------
+    #: Overridden parent class trait
     toolkit_impl = Instance(IDialogImpl)
     
     def open(self):

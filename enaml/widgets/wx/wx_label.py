@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements
@@ -26,8 +30,9 @@ class WXLabel(WXControl):
         """ Creates the underlying text control.
 
         """
-        self.widget = wx.StaticText(self.parent_widget())
-
+        self.widget = widget = wx.StaticText(self.parent_widget())
+        widget.SetDoubleBuffered(True)
+        
     def initialize_widget(self):
         """ Initializes the attributes on the underlying control.
 

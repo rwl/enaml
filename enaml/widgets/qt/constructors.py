@@ -1,351 +1,62 @@
-from traits.api import implements
-
-from ...constructors import IToolkitConstructor, BaseToolkitCtor
-
-
-#-------------------------------------------------------------------------------
-# Constructor helper mixins
-#-------------------------------------------------------------------------------
-class WrapWindowMixin(object):
-    """ A mixin that wraps a constructor in a QtWindowCtor
-
-    """
-    def __call__(self, **ctxt_objs):
-        # A container is not directly viewable, 
-        # it must first be wrapped in a window.
-        window_ctor = QtWindowCtor(
-            children=[
-                self,
-            ],
-        )
-        return window_ctor(**ctxt_objs)
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
+from ...toolkit import Constructor
 
 
-class WrapWindowVGroupMixin(WrapWindowMixin):
-    """ A mixin that wraps a constructor in a QtWindowCtor with
-    a QtVGroupCtor as its container.
+def importer(module_path, name):
+    fromlist = module_path.split('.')
+    def _importer():
+        mod = __import__(module_path, fromlist=fromlist)
+        try:
+            res = getattr(mod, name)
+        except AttributeError:
+            raise ImportError('Cannot import name %s' % name)
+        return res
+    return _importer
+
+
+def constructor(base_path):
+    """ A factory function which understands our name mangling and will
+    create a constructor instance. Returns tuple of (name, ctor) where
+    name is a string that can be used by toolkit to refer to the ctor
+    in the enaml source code.
 
     """
-    def __call__(self, **ctxt_objs):
-        # An element is not directly viewable, it must 
-        # first be wrapped in a window and container.
-        window_ctor = QtWindowCtor(
-            children=[
-                QtVGroupCtor(
-                    children=[
-                        self,
-                    ],
-                ),
-            ],
-        )
-        return window_ctor(**ctxt_objs)
-
-
-#-------------------------------------------------------------------------------
-# Base Constructors
-#-------------------------------------------------------------------------------
-class QtBaseWindowCtor(BaseToolkitCtor):
-    pass
-
-
-class QtBasePanelCtor(BaseToolkitCtor, WrapWindowVGroupMixin):
-    pass
-
-
-class QtBaseContainerCtor(BaseToolkitCtor, WrapWindowMixin):
+    c_module_path = 'enaml.widgets.' + base_path
+    c_name = ''.join(part.capitalize() for part in base_path.split('_'))
     
-    def construct(self):
-        # Replace any toplevel windows with panel constructors.
-        # This facilitates composing other toplevel windows into 
-        # another window. Also, the IPanel interface has no 
-        # attributes, so we don't need (or want) to copy over
-        # the exprs from then window constuctor, just the metas
-        # and the children.
-        children = self.children
-        for idx, child in enumerate(children):
-            if isinstance(child, QtBaseWindowCtor):
-                window_children = child.children
-                window_metas = child.metas
-                children[idx] = QtPanelCtor(children=window_children,
-                                            metas=window_metas)
-        super(QtBaseContainerCtor, self).construct()
+    t_module_path = 'enaml.widgets.qt.' + 'qt_' + base_path
+    t_name = 'Qt' + c_name
+    
+    shell_loader = importer(c_module_path, c_name)
+    abstract_loader = importer(t_module_path, t_name)
+
+    ctor = Constructor(shell_loader, abstract_loader)
+
+    return c_name, ctor
+
+
+QT_CONSTRUCTORS = dict((
+    constructor('window'),
+    constructor('component'),
+    constructor('dialog'),
+    constructor('calendar'),
+    constructor('check_box'),
+    constructor('combo_box'),
+    constructor('field'),
+    constructor('html'),
+    constructor('image'),
+    constructor('label'),
+    constructor('push_button'),
+    constructor('radio_button'),
+    constructor('slider'),
+    constructor('spin_box'),
+    constructor('traitsui_item'),
+    constructor('enable_canvas'),
+    constructor('table_view'),
+    constructor('date_edit'),
+    constructor('datetime_edit'),
+))
 
-
-class QtBaseComponentCtor(BaseToolkitCtor, WrapWindowVGroupMixin):
-    pass
-
-
-#-------------------------------------------------------------------------------
-# Window constructors
-#-------------------------------------------------------------------------------
-class QtWindowCtor(QtBaseWindowCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..window import Window
-        from .qt_window import QtWindow
-        window = Window(toolkit_impl=QtWindow())
-        return window
-
-
-class QtDialogCtor(QtBaseWindowCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..dialog import Dialog
-        from .qt_dialog import QtDialog
-        dialog = Dialog(toolkit_impl=QtDialog())
-        return dialog
-
-
-#-------------------------------------------------------------------------------
-# Panel Constructors
-#-------------------------------------------------------------------------------
-class QtPanelCtor(QtBasePanelCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..panel import Panel
-        from .qt_panel import QtPanel
-        panel = Panel(toolkit_impl=QtPanel())
-        return panel
-
-
-#-------------------------------------------------------------------------------
-# Container Constructors
-#-------------------------------------------------------------------------------
-class QtFormCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..form import Form
-        from .qt_form import QtForm
-        form = Form(_impl=QtForm())
-        return form
-
-
-class QtGroupCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..group import Group
-        from .qt_group import QtGroup
-        group = Group(toolkit_impl=QtGroup())
-        return group
-
-
-class QtVGroupCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..vgroup import VGroup
-        from .qt_vgroup import QtVGroup
-        vgroup = VGroup(toolkit_impl=QtVGroup())
-        return vgroup
-
-
-class QtHGroupCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..hgroup import HGroup
-        from .qt_hgroup import QtHGroup
-        hgroup = HGroup(toolkit_impl=QtHGroup())
-        return hgroup
-
-
-class QtStackedGroupCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..stacked_group import StackedGroup
-        from .qt_stacked_group import QtStackedGroup
-        stacked_group = StackedGroup(toolkit_impl=QtStackedGroup())
-        return stacked_group
-
-
-class QtTabGroupCtor(QtBaseContainerCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..tab_group import TabGroup
-        from .qt_tab_group import QtTabGroup
-        tab_group = TabGroup(toolkit_impl=QtTabGroup())
-        return tab_group
-
-
-#-------------------------------------------------------------------------------
-# Element Constructors
-#-------------------------------------------------------------------------------
-class QtGroupBoxCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..group_box import GroupBox
-        from .qt_group_box import QtGroupBox
-        group_box = GroupBox(toolkit_impl=QtGroupBox())
-        return group_box
-
-
-class QtCalendarCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..calendar import Calendar
-        from .qt_calendar import QtCalendar
-        calendar = Calendar(toolkit_impl=QtCalendar())
-        return calendar
-
-
-class QtCheckBoxCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..check_box import CheckBox
-        from .qt_check_box import QtCheckBox
-        check_box = CheckBox(toolkit_impl=QtCheckBox())
-        return check_box
-
-
-class QtComboBoxCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..combo_box import ComboBox
-        from .qt_combo_box import QtComboBox
-        combo_box = ComboBox(toolkit_impl=QtComboBox())
-        return combo_box
-
-
-class QtFieldCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..field import Field
-        from .qt_field import QtField
-        field = Field(toolkit_impl=QtField())
-        return field
-
-
-class QtHtmlCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..html import Html
-        from .qt_html import QtHtml
-        html = Html(toolkit_impl=QtHtml())
-        return html
-
-
-class QtImageCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..image import Image
-        from .qt_image import QtImage
-        image = Image(toolkit_impl=QtImage())
-        return image
-
-
-class QtLabelCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..label import Label
-        from .qt_label import QtLabel
-        label = Label(toolkit_impl=QtLabel())
-        return label
-
-
-class QtLineEditCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..line_edit import LineEdit
-        from .qt_line_edit import QtLineEdit
-        line_edit = LineEdit(toolkit_impl=QtLineEdit())
-        return line_edit
-
-
-class QtPushButtonCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..push_button import PushButton
-        from .qt_push_button import QtPushButton
-        push_button = PushButton(toolkit_impl=QtPushButton())
-        return push_button
-
-
-class QtRadioButtonCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..radio_button import RadioButton
-        from .qt_radio_button import QtRadioButton
-        radio_button = RadioButton(toolkit_impl=QtRadioButton())
-        return radio_button
-
-
-class QtSliderCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..slider import Slider
-        from .qt_slider import QtSlider
-        slider = Slider(toolkit_impl=QtSlider())
-        return slider
-
-
-class QtSpinBoxCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..spin_box import SpinBox
-        from .qt_spin_box import QtSpinBox
-        spin_box = SpinBox(toolkit_impl=QtSpinBox())
-        return spin_box
-        
-        
-class QtTraitsUIItemCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..traitsui_item import TraitsUIItem
-        from .qt_traitsui_item import QtTraitsUIItem
-        traitsui_item = TraitsUIItem(toolkit_impl=QtTraitsUIItem())
-        return traitsui_item
-        
-        
-class QtEnableCanvasCtor(QtBaseComponentCtor):
-
-    implements(IToolkitConstructor)
-
-    def component(self):
-        from ..enable_canvas import EnableCanvas
-        from .qt_enable_canvas import QtEnableCanvas
-        canvas = EnableCanvas(toolkit_impl=QtEnableCanvas())
-        return canvas

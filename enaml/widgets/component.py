@@ -1,400 +1,292 @@
-from traits.api import Interface, Str, WeakRef, Instance, List
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
+from abc import abstractmethod, abstractproperty
 
-from ..enaml_base import EnamlBase
-from ..style_node import EnamlStyleNode
-from ..util.trait_types import ReadOnlyConstruct
+from traits.api import Instance, List, Property
+
+from .base_component import BaseComponent, AbstractTkBaseComponent
+from .layout.box_model import BoxModel
+from .layout.symbolics import LinearConstraint
+from .layout.layout_manager import AbstractLayoutManager
+from .layout.constraints_layout import ConstraintsLayout
 
 
-class IComponentImpl(Interface):
-    """ The base Component implementation interface.
+class AbstractTkComponent(AbstractTkBaseComponent):
+    """ The abstract toolkit Component interface.
 
-    A component implementation is responsible for listening to attributes
-    on the parent and doing conversions to and from those attributes
-    and values on the widget. The implementation is added as a virtual
-    listener on the component with a prefix of 'parent', so any 
-    parent_*_changed methods will be called in response to a trait
-    change on the parent. The implementation should set the traits
-    on the parent (including events) when appropriate according to 
-    their documentation.
- 
-    Attributes
-    ----------
-    parent : WeakRef(Component)
-        A weak referent to the parent component.
-        
-    Methods
-    -------
-    set_parent(parent)
-        Sets the parent to the parent component. This will be called by 
-        the framework before the widget is to be created.
-    
-    create_widget()
-        Creates the underlying toolkit widget.
-
-    initialize_widget()
-        Initializes the widget with attributes from the parent.
-    
-    layout_child_widgets()
-        Add the child widgets of this component to any sizers or
-        layout objects necessary to lay out the ui.
-
-    toolkit_widget()
-        Returns the toolkit specific widget.
-    
-    parent_name_changed(name)
-        Called when the name trait on the parent changes.
+    A toolkit component is responsible for handling changes on a shell 
+    Component and proxying those changes to and from its internal toolkit
+    widget.
 
     """
-    parent = WeakRef('Component')
-
-    def set_parent(self, parent):
-        """ Sets the parent to the parent component. 
-
-        This will be called by the framework before the widget is to be
-        created. Typical implementations will just assign it to the 
-        parent weakref. This is the first method called in the layout
-        process.
-
-        """
-        raise NotImplementedError
-
-    def create_widget(self):
-        """ Creates the underlying toolkit widget. At the time this is
-        called by the frameworks, the 'set_parent' method will have
-        already been called. This is the second method called in the
-        layout process.
-
-        """
-        raise NotImplementedError
-    
-    def initialize_widget(self):
-        """ Initializes the widget with attributes from the parent. This
-        is the third method called in the layout process.
-
-        """
-        raise NotImplementedError
-
-    def create_style_handler(self):
-        """ Creates and assigns the style handler for this toolkit
-        specific widget. This is the fourth method called in the layout
-        process.
-
-        """
-        raise NotImplementedError
-
-    def initialize_style(self):
-        """ Initializes the style and style handler for the widget. This
-        is the fifth method called in the layout proces.
-
-        """
-        raise NotImplementedError
-
-    def layout_child_widgets(self):
-        """ Adds the child widgets (if any) to any necessary layout
-        components in the ui. This is the sixth and final method called
-        in the layout process.
-
-        """
-        raise NotImplementedError
-
+    @abstractproperty
     def toolkit_widget(self):
-        """ Returns the toolkit specific widget being mangaged by this
-        implementation object.
+        """ An abstract property that should return the gui toolkit 
+        widget being managed by the object.
 
         """
         raise NotImplementedError
 
-    def parent_name_changed(self, name):
-        """ Called when the name on the component changes.
+    @abstractmethod
+    def size(self):
+        """ Return the size of the internal toolkit widget as a 
+        (width, height) tuple of integers.
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def size_hint(self):
+        """ Returns a (width, height) tuple of integers which represent
+        the suggested size of the widget for its current state. This 
+        value is used by the layout manager to determine how much 
+        space to allocate the widget.
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def resize(self, width, height):
+        """ Resizes the internal toolkit widget according the given
+        width and height integers.
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def pos(self):
+        """ Returns the position of the internal toolkit widget as an 
+        (x, y) tuple of integers. The coordinates should be relative to
+        the origin of the widget's parent.
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def move(self, x, y):
+        """ Moves the internal toolkit widget according to the given
+        x and y integers which are relative to the origin of the
+        widget's parent.
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def geometry(self):
+        """ Returns an (x, y, width, height) tuple of geometry info
+        for the internal toolkit widget. The semantic meaning of the
+        values are the same as for the 'size' and 'pos' methods.
+
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def set_geometry(self, x, y, width, height):
+        """ Sets the geometry of the internal widget to the given 
+        x, y, width, and height values. The semantic meaning of the
+        values is the same as for the 'resize' and 'move' methods.
 
         """
         raise NotImplementedError
 
 
-class Component(EnamlBase):
-    """ The most base class of the Enaml widgets component heierarchy. 
-    
-    All Enaml  widget classes should inherit from this class. This class
-    is not meant to be instantiated.
-    
-    Attributes
-    ----------
-    _id : Str
-        The identifier assigned to this element in the enaml source code.
-        Note that if you change this, you will likely break things. This
-        is a protected attribute.
-
-    _type : Str
-        The type name this component is using in the enaml source code.
-        This is a protected attribute.
-
-    parent : WeakRef(EnamlBase)
-        The parent object which is stored as a weakref to mitigate memory 
-        leak issues from reference cycles. This is a protected attribute.
-
-    children : List(Instance(EnamlBase))
-        The list of children components for this component. Subclasses
-        may redefine this trait to restrict which types of children
-        they allow. This list should not be manipulated outside of
-        the *_child(...) methods. This is a protected attribute.
-
-    name : Str
-        The name of this element which may be used as metainfo by other
-        components. Note that this is not the same as the identifier 
-        that can be assigned to a component as part of the enaml grammar.
-
-    style : Instance(StyleNode)
-        A protected read-only attribute that holds the component's style
-        node.
-
-    toolkit_impl : Instance(ComponentImpl)
-        The toolkit specific object that implements the behavior of 
-        this component. This implementation object is added as a virtual 
-        listener for this component and maintains a weak reference to 
-        this component. The listeners are set up and torn down with the 
-        'hook_impl' and 'unhook_impl' methods. This is a protected 
-        attribute.
-
-    Methods
-    -------
-    add_child(child)
-        Add a child component to this component. This will reparent
-        the child.
-    
-    remove_child(child)
-        Remove a child component from this component. This will
-        unparent the child,
-
-    replace_child(child, other_child)
-        Replace child in this component with a different one. This
-        will unparent the first child and reparent the second child.
-    
-    swap_children(child, other_child)
-        Swap the positions of the two children.
-
-    set_parent(self, parent):
-        Set the parent for this component to parent.
-
-    layout()
-        Lay out and create the widgets for this component and it's
-        children. This builds the widget tree.
-    
-    toolkit_widget()
-        Returns the underlying gui toolkit widget which is being 
-        managed by the implemention object.
-    
-    refresh(force=False)
-        Refreshes the ui tree from this point down, rebuilding children 
-        where necessary.
+class Component(BaseComponent):
+    """ A BaseComponent subclass that adds a box model and support
+    for constraints specification. This class represents the most
+    basic visible widget in Enaml.
 
     """
-    _id = Str
+    #: A private attribute that holds the box model instance
+    #: for this component. 
+    _box_model = Instance(BoxModel, ())
 
-    _type = Str
+    #: An object that manages the layout of this component and its 
+    #: direct children. The default is simple constraints based
+    layout = Instance(AbstractLayoutManager, factory=ConstraintsLayout)
 
-    parent = WeakRef('Component')
+    #: A list of linear constraints defined for this object.
+    constraints = List(Instance(LinearConstraint))
 
-    children = List(Instance('Component'))
+    #: A read-only symbolic object that represents the left 
+    #: boundary of the component
+    left = Property
 
-    name = Str
+    #: A read-only symbolic object that represents the top 
+    #: boundary of the component
+    top = Property
 
-    # XXX - I don't like this ReadOnlyConstruct
-    style = ReadOnlyConstruct(lambda self, name: EnamlStyleNode(parent=self))
+    #: A read-only symbolic object that represents the width
+    #: of the component
+    width = Property
 
-    toolkit_impl = Instance(IComponentImpl)
+    #: A read-only symbolic object that represents the height 
+    #: of the component
+    height = Property
 
-    def add_child(self, child):
-        """ Add a child component to this component.
+    #: A read-only symbolic object that represents the right 
+    #: boundary of the component
+    right = Property
+
+    #: A read-only symbolic object that represents the bottom 
+    #: boundary of the component
+    bottom = Property
+
+    #: A read-only symbolic object that represents the vertical 
+    #: center of the component
+    v_center = Property
+
+    #: A read-only symbolic object that represents the horizontal 
+    #: center of the component
+    h_center = Property
+
+    #: A read-only property that returns the toolkit specific widget
+    #: being managed by the abstract widget.
+    toolkit_widget = Property
+
+    #: Overridden parent class trait
+    abstract_obj = Instance(AbstractTkComponent)
+
+    def _get_left(self):
+        """ Property getter for the 'left' property.
+
+        """
+        return self._box_model.left
+    
+    def _get_top(self):
+        """ Property getter for the 'top' property.
+
+        """
+        return self._box_model.top
+    
+    def _get_width(self):
+        """ Property getter for the 'width' property.
+
+        """
+        return self._box_model.width
+    
+    def _get_height(self):
+        """ Property getter for the 'height' property.
+
+        """
+        return self._box_model.height
+    
+    def _get_right(self):
+        """ Property getter for the 'right' property.
+
+        """
+        return self._box_model.right
+    
+    def _get_bottom(self):
+        """ Property getter for the 'bottom' property.
+
+        """
+        return self._box_model.bottom
+    
+    def _get_v_center(self):
+        """ Property getter for the 'v_center' property.
+
+        """
+        return self._box_model.v_center
+    
+    def _get_h_center(self):
+        """ Property getter for the 'h_center' property.
+
+        """
+        return self._box_model.h_center
+    
+    def size(self):
+        """ Returns the size tuple as given by the abstract widget.
+
+        """
+        return self.abstract_obj.size()
+    
+    def size_hint(self):
+        """ Returns the size hint tuple as given by the abstract widget
+        for its current state.
+
+        """
+        return self.abstract_obj.size_hint()
+
+    def resize(self, width, height):
+        """ Resize the abstract widget as specified by the given
+        width and height integers.
+
+        """
+        self.abstract_obj.resize(width, height)
+    
+    def pos(self):
+        """ Returns the position tuple as given by the abstract widget.
+
+        """
+        return self.abstract_obj.pos()
+    
+    def move(self, x, y):
+        """ Moves the abstract widget to the given x and y integer
+        coordinates which are given relative to the parent origin.
+
+        """
+        self.abstract_obj.move(x, y)
+    
+    def geometry(self):
+        """ Returns the (x, y, width, height) geometry tuple as given
+        by the abstract widget.
+
+        """
+        return self.abstract_obj.geometry()
+    
+    def set_geometry(self, x, y, width, height):
+        """ Sets the geometry of the abstract widget with the given
+        integer values.
+
+        """
+        self.abstract_obj.set_geometry(x, y, width, height)
+
+    def _get_toolkit_widget(self):
+        """ Property getter for the 'toolkit_widget' property.
+
+        """
+        return self.abstract_obj.toolkit_widget
+
+    def update_contraints_if_needed(self):
+        """ Update the constraints of this component if necessary. This 
+        is typically the case when a constraint has been changed.
+
+        """
+        self.layout.update_constraints_if_needed()
+
+    def set_needs_update_constraints(self):
+        """ Indicate that the constraints for this component should be
+        updated some time later.
+
+        """
+        self.layout.set_needs_update_constraints()
+
+    def update_constraints(self):
+        """ Update the constraints for this component.
+
+        """
+        self.layout.update_constraints()
+    
+    def layout_if_needed(self):
+        """ Refreshes the layout of this component if necessary. This 
+        will typically be needed if this component has been resized or 
+        the sizes of any of its children have been changed.
+
+        """
+        self.layout.layout_if_needed()
+
+    def set_needs_layout(self):
+        """ Indicate that the layout should be refreshed some time 
+        later.
+
+        """
+        self.layout.set_needs_layout()
         
-        Call this method when a child should be added to the component. 
-        
-        Arguments
-        ---------
-        child : Instance(Component)
-            The child to add to the component. The child must not
-            already be in the component.
-
-        Returns
-        -------
-        result : None
+    def do_layout(self):
+        """ Updates the layout of this component.
 
         """
-        # XXX this is O(n) but n should be small so I'm not 
-        # worrying about it at the moment
-        children = self.children
-        if child in children:
-            raise ValueError('Child %s already in children.' % child)
-        child.set_parent(self)
-        self.children.append(child)
-        self.refresh()
-
-    def remove_child(self, child):
-        """ Remove the child from this container.
-
-        Call this method when a child should be removed from the 
-        container.
-
-        Arguments
-        ---------
-        child : Instance(Component)
-            The child to remove from the container. The child
-            must be contained in the container.
-
-        Returns
-        -------
-        result : None
-
-        """
-        # XXX this is O(n) but n should be small so I'm not 
-        # worrying about it at the moment
-        try:
-            self.children.remove(child)
-        except ValueError:
-            raise ValueError('Child %s not in children.' % child)
-        child.set_parent(None)
-        self.refresh()
-
-    def replace_child(self, child, other_child):
-        """ Replace child with other_child.
-
-        Call this method when the child should be replaced by the
-        other_child.
-
-        Arguments
-        ---------
-        child : Instance(Component)
-            The child being replaced. The child must be contained in 
-            the container.
-
-        other_child : Instance(Component)
-            The child taking the new place. The child must not be 
-            contained in the container.
-
-        Returns
-        -------
-        result : None
-
-        """
-        # XXX this is O(n) but n should be small so I'm not 
-        # worrying about it at the moment
-        children = self.children
-        try:
-            idx = children.index(child)
-        except ValueError:
-            raise ValueError('Child %s not in children.' % child)
-        if other_child in children:
-            raise ValueError('Child %s already in children.' % child)
-        child.set_parent(None)
-        other_child.set_parent(self)
-        children[idx] = other_child
-        self.refresh()
-
-    def swap_children(self, child, other_child):
-        """ Swap the position of two children.
-
-        Call this method when their are two children in the container
-        whose positions should be swapped.
-
-        Arguments
-        ---------
-        child : Instance(Component)
-            The first child in the swap. The child must be contained 
-            in the container.
-
-        other_child : Instance(Component)
-            The second child in the swap. The child must be contained 
-            in the container.
-
-        Returns
-        -------
-        result : None
-
-        """
-        # XXX this is O(n) but n should be small so I'm not 
-        # worrying about it at the moment
-        children = self.children
-        try:
-            idx = children.index(child)
-        except ValueError:
-            raise ValueError('Child %s not in children.' % child)
-        try:
-            other_idx = children.index(other_child)
-        except ValueError:
-            raise ValueError('Child %s not in children.' % other_child)
-        children[idx] = other_child
-        children[other_idx] = child
-        self.refresh()
-
-    def set_parent(self, parent):
-        """ Set the parent of this component to parent.
-
-        The default implementation of this method simply assigns the
-        parent to the .parent attribute. Subclasses may override this
-        method to do any custom process before the parent is set.
-
-        Arguments
-        ---------
-        parent : Component or None
-            The parent Component of this component or None.
-
-        Returns
-        -------
-        result : None
-
-        """
-        self.parent = parent
-
-    def layout(self):
-        """ Initialize and layout the component and it's children. 
-
-        In addition to running the layout process, this method calls
-        hook_impl() which will add the implementation as a virtual 
-        listen on this instance. This method should not typically be 
-        called by user code.
-
-        Arguments
-        ---------
-        None
-
-        Returns
-        -------
-        result : None
-
-        """
-        impl = self.toolkit_impl
-        impl.set_parent(self)
-        
-        impl.create_widget()
-        for child in self.children:
-            child.layout()
-        impl.initialize_widget()
-
-        impl.create_style_handler()
-        impl.initialize_style()
-
-        impl.layout_child_widgets()
-
-        self._hook_impl()
-        
-    def toolkit_widget(self):
-        """ Returns the toolkit specific widget for this component.
-
-        """
-        return self.toolkit_impl.toolkit_widget()
-
-    def refresh(self, force=False):
-        """ Refreshes the layout. 
-
-        """
-        pass
-
-    def _hook_impl(self):
-        """ Adds the implementation object as a listener via the 
-        'add_trait' method.
-        
-        """
-        self.add_trait_listener(self.toolkit_impl, 'parent')
-
-
-Component.protect('_id', '_type', 'parent', 'children', 'style', 'toolkit_impl')
+        self.layout.layout()
 

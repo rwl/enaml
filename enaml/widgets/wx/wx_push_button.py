@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements
@@ -26,7 +30,8 @@ class WXPushButton(WXControl):
         """ Creates the underlying wx.Button control.
 
         """
-        self.widget = wx.Button(self.parent_widget())
+        self.widget = widget = wx.Button(self.parent_widget())
+        widget.SetDoubleBuffered(True)
         
     def initialize_widget(self):
         """ Intializes the widget with the attributes of this instance.
@@ -61,7 +66,6 @@ class WXPushButton(WXControl):
         """
         parent = self.parent
         parent._down = False
-        parent.released = True
         parent.clicked = True
         event.Skip()
 

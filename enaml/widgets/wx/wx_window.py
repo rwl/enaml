@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements
@@ -31,7 +35,7 @@ class WXWindow(WXComponent):
 
         """
         self.widget = wx.Frame(self.parent_widget())
-    
+
     def initialize_widget(self):
         """ Intializes the attributes on the wx.Frame.
 
@@ -44,12 +48,6 @@ class WXWindow(WXComponent):
 
         """
         pass
-    
-    def initialize_style(self):
-        """ Initializes the style for the window.
-
-        """
-        pass
         
     def layout_child_widgets(self):
         """ Arranges the children of the frame (typically only one) in
@@ -58,7 +56,7 @@ class WXWindow(WXComponent):
         """
         sizer = wx.BoxSizer(wx.VERTICAL)
         for child in self.parent.children:
-            flags = compute_sizer_flags(child.style)
+            flags = compute_sizer_flags(child)
             sizer.AddF(child.toolkit_impl.widget, flags)
         self.widget.SetSizer(sizer)
         sizer.Layout()

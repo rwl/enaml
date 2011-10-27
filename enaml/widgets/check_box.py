@@ -1,9 +1,13 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from traits.api import Instance
 
-from .toggle_control import ToggleControl, IToggleControlImpl
+from .toggle_control import ToggleControl, AbstractTkToggleControl
 
 
-class ICheckBoxImpl(IToggleControlImpl):
+class AbstractTkCheckBox(AbstractTkToggleControl):
     pass
 
 
@@ -20,8 +24,6 @@ class CheckBox(ToggleControl):
     ToggleControl
 
     """
-    #---------------------------------------------------------------------------
-    # Overridden parent class traits
-    #---------------------------------------------------------------------------
-    toolkit_impl = Instance(ICheckBoxImpl)
+    #: Overridden parent class trait
+    abstract_obj = Instance(AbstractTkCheckBox)
 

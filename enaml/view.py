@@ -1,7 +1,7 @@
-from traits.api import HasStrictTraits, Instance, Bool
-
-from .toolkit import Toolkit
-from .style_sheet import StyleSheet
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from .widgets.window import Window
 
   
@@ -14,60 +14,32 @@ class NamespaceProxy(object):
         self.__dict__ = ns
       
 
-class View(HasStrictTraits):
+class View(object):
     """ The View object provides a simple shell around an Enaml ui tree.
 
-    Attributes
-    ----------
-    window : Instance(Window)
-        The top-level Enaml window object for the view.
-
-    ns : Instance(NamespaceProxy)
-        A proxy into the global namespace of the enaml view.
-
-    toolkit : Instance(Toolkit)
-        The toolkit instance that was used to create the view.
-    
-    Methods
-    -------
-    show()
-        Show the ui on the screen.
-
-    hide()
-        Hide the ui from the screen.
-
     """
-    window = Instance(Window)
+    def __init__(self, components, ns):
+        self.components = components
+        self.ns = NamespaceProxy(ns)
 
-    ns = Instance(NamespaceProxy)
-
-    toolkit = Instance(Toolkit)
-
-    style_sheet = Instance(StyleSheet)
-
-    _style_sheet_applied = Bool(False)
-
-    def show(self):
-        if not self._style_sheet_applied:
-            self._apply_style_sheet()
-        self.window.show()
-        self.toolkit.start_event_loop()
+    def show(self, start_app=True):
+        components = self.components
         
-    def hide(self):
-        self.window.hide()
-
-    def set_style_sheet(self, style_sheet):
-        self.style_sheet = style_sheet
-        self._apply_style_sheet()
-
-    def _style_sheet_default(self):
-        return self.toolkit.default_style_sheet()
+        if len(components) > 1:
+            msg = 'A View is currently unable to show multiple components'
+            raise ValueError(msg)
         
-    def _apply_style_sheet(self):
-        stack = [self.window]
-        style_sheet = self.style_sheet
-        while stack:
-            node = stack.pop()
-            node.style.style_sheet = style_sheet
-            stack.extend(node.children)
+        component = components[0]
+        
+        if not isinstance(component, Window):
+            msg = 'A View is currently unable to show non-Window types'
+            raise TypeError(msg)
+        
+        tk = component.toolkit
+        tk.create_app()
+        
+        component.show()
+        
+        if start_app:
+            tk.start_app()
 

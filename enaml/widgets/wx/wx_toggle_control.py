@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from traits.api import implements
 
 from .wx_control import WXControl
@@ -65,7 +69,6 @@ class WXToggleControl(WXControl):
         parent = self.parent
         parent.checked = self.widget.GetValue()
         parent._down = False
-        parent.released = True
         parent.toggled = True
         event.Skip()
 

@@ -1,39 +1,33 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from .qt import QtGui
-
-from traits.api import implements
 
 from .qt_toggle_control import QtToggleControl
 
-from ..check_box import ICheckBoxImpl
+from ..check_box import AbstractTkCheckBox
 
 
-class QtCheckBox(QtToggleControl):
-    """ A PySide implementation of CheckBox.
-
-    See Also
-    --------
-    CheckBox
+class QtCheckBox(QtToggleControl, AbstractTkCheckBox):
+    """ A Qt implementation of CheckBox.
 
     """
-    implements(ICheckBoxImpl)
-
-    #---------------------------------------------------------------------------
-    # ICheckBoxImpl interface
-    #---------------------------------------------------------------------------
-    def create_widget(self):
+    #--------------------------------------------------------------------------
+    # Setup methods
+    #--------------------------------------------------------------------------
+    def create(self):
         """ Creates the underlying QCheckBox widget.
 
         """
         self.widget = QtGui.QCheckBox(self.parent_widget())
         
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------
     def bind(self):
-        """ Binds the event handlers for the check box. Not meant for
+        """ Connects the event handlers for the check box. Not meant for
         public consumption.
 
         """
+        super(QtCheckBox, self).bind()
         widget = self.widget
         widget.toggled.connect(self.on_toggled)
         widget.pressed.connect(self.on_pressed)

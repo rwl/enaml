@@ -1,121 +1,154 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from .qt import QtCore, QtGui
+from .qt_base_component import QtBaseComponent
 
-from traits.api import implements, HasStrictTraits, WeakRef, Instance
+from ..component import AbstractTkComponent
 
-from ..component import Component, IComponentImpl
+class QResizingFrame(QtGui.QFrame):
+    """ A QFrame subclass that converts a resize event into a signal
+    that can be connected to a slot. This allows the widget to notify
+    Enaml that it has been resized and the layout needs to be recomputed.
 
-class QtComponent(HasStrictTraits):
+    """
+    resized = QtCore.Signal()
+
+    def resizeEvent(self, event):
+        self.resized.emit()
+
+
+class QtComponent(QtBaseComponent, AbstractTkComponent):
     """ A Qt4 implementation of Component.
 
     A QtComponent is not meant to be used directly. It provides some 
     common functionality that is useful to all widgets and should 
-    serve as the base class for all other classes.
-
-    See Also
-    --------
-    Component
+    serve as the base class for all other classes. Note that this 
+    is not a HasTraits class.
 
     """
-    implements(IComponentImpl)
+    #: The Qt widget created by the component
+    widget = None
 
-    #---------------------------------------------------------------------------
-    # IComponentImpl interface
-    #---------------------------------------------------------------------------
-    parent = WeakRef(Component)
-
-    def set_parent(self, parent):
-        """ Sets the parent component to the given parent.
-
-        """
-        self.parent = parent
+    #--------------------------------------------------------------------------
+    # Setup Methods
+    #--------------------------------------------------------------------------
+    def create(self):
+        self.widget = QResizingFrame(self.parent_widget())
+    
+    def bind(self):
+        super(QtComponent, self).bind()
         
-    def create_widget(self):
-        """ Creates the underlying wx widget. Must be implemented by 
-        subclasses.
+        # This is a hack at the moment
+        if hasattr(self.widget, 'resized'):
+            self.widget.resized.connect(self.on_resize)
 
-        """
-        raise NotImplementedError
-    
-    def initialize_widget(self):
-        """ Initializes the attribtues of a wiget. Must be implemented
-        by subclasses.
-
-        """
-        raise NotImplementedError
-    
-    def create_style_handler(self):
-        """ Creates and sets the style handler for the widget. Must
-        be implemented by subclasses.
-
-        """
-        raise NotImplementedError
-
-    def initialize_style(self):
-        """ Initializes the style and style handler of a widget. Must
-        be implemented by subclasses.
-
-        """
-        raise NotImplementedError
-
-    def layout_child_widgets(self):
-        """ Arranges the children of this component. Must be implemented
-        by subclasses.
-
-        """
-        raise NotImplementedError
-    
+    #--------------------------------------------------------------------------
+    # Implementation
+    #--------------------------------------------------------------------------
+    @property
     def toolkit_widget(self):
-        """ Returns the toolkit specific widget for this component.
+        """ A property that returns the toolkit specific widget for this
+        component.
 
         """
         return self.widget
     
-    def parent_name_changed(self, name):
-        """ The change handler for the 'name' attribute on the parent.
-        QtComponent doesn't care about the name. Subclasses should
-        reimplement if they need that info.
+    def size(self):
+        """ Return the size of the internal toolkit widget as a 
+        (width, height) tuple of integers.
 
         """
-        pass    
+        widget = self.widget
+        return (widget.width(), widget.height())
+    
+    def size_hint(self):
+        """ Returns a (width, height) tuple of integers which represent
+        the suggested size of the widget for its current state. This 
+        value is used by the layout manager to determine how much 
+        space to allocate the widget.
 
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------
-    widget = Instance(QtCore.QObject)
-        
+        """
+        size_hint = self.widget.sizeHint()
+        return (size_hint.width(), size_hint.height())
+
+    def resize(self, width, height):
+        """ Resizes the internal toolkit widget according the given
+        width and height integers.
+
+        """
+        self.widget.resize(width, height)
+    
+    def pos(self):
+        """ Returns the position of the internal toolkit widget as an 
+        (x, y) tuple of integers. The coordinates should be relative to
+        the origin of the widget's parent.
+
+        """
+        widget = self.widget
+        return (widget.x(), widget.y())
+    
+    def move(self, x, y):
+        """ Moves the internal toolkit widget according to the given
+        x and y integers which are relative to the origin of the
+        widget's parent.
+
+        """
+        self.widget.move(x, y)
+    
+    def geometry(self):
+        """ Returns an (x, y, width, height) tuple of geometry info
+        for the internal toolkit widget. The semantic meaning of the
+        values are the same as for the 'size' and 'pos' methods.
+
+        """
+        x, y = self.pos()
+        width, height = self.size()
+        return (x, y, width, height)
+    
+    def set_geometry(self, x, y, width, height):
+        """ Sets the geometry of the internal widget to the given 
+        x, y, width, and height values. The semantic meaning of the
+        values is the same as for the 'resize' and 'move' methods.
+
+        """
+        self.widget.setGeometry(x, y, width, height)
+    
+    def on_resize(self):
+        # should handle the widget resizing by telling something
+        # that things need to be relayed out
+        pass
+
+    #--------------------------------------------------------------------------
+    # Convienence methods
+    #--------------------------------------------------------------------------
     def parent_widget(self):
         """ Returns the logical QWidget parent for this component. 
 
         Since some parents may wrap non-Widget objects, this method will
-        walk up the tree of parent components until a QWindow is found
-        or None if no QWindow is found.
-
-        Arguments
-        ---------
-        None
+        walk up the tree of components until a QWidget is found or None 
+        if no QWidget is found.
 
         Returns
         -------
         result : QWidget or None
 
         """
-        # Our parent is a Component, and the parent of 
-        # a Component is also a Component
-        parent = self.parent
-        while parent:
-            widget = parent.toolkit_widget()
+        # XXX do we need to do this still? i.e. can we now have a parent
+        # that doesn't create a widget???
+        shell_parent = self.shell_obj.parent
+        while shell_parent:
+            widget = shell_parent.toolkit_widget
             if isinstance(widget, QtGui.QWidget):
                 return widget
-            parent = parent.parent
+            shell_parent = shell_parent.parent
         
     def child_widgets(self):
-        """ Iterates over the parent's children and yields the 
+        """ Iterates over the shell widget's children and yields the 
         toolkit widgets for those children.
 
         """
-        for child in self.parent.children:
-            yield child.toolkit_widget()
+        for child in self.shell_obj.children:
+            yield child.toolkit_widget
 
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------

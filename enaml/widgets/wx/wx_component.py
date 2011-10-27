@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements, HasStrictTraits, WeakRef, Instance
@@ -102,7 +106,7 @@ class WXComponent(HasStrictTraits):
         """
         # Our parent is a Compent, and the parent of 
         # a Component is also a Component
-        parent = self.parent
+        parent = self.parent.parent
         while parent:
             widget = parent.toolkit_widget()
             if isinstance(widget, wx.Window):

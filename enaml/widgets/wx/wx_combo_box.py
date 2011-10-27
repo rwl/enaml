@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements, cached_property, Property, Str, Event, List
@@ -26,7 +30,9 @@ class WXComboBox(WXControl):
         """ Creates a wx.ComboBox.
 
         """
-        self.widget = wx.ComboBox(self.parent_widget(), style=wx.CB_READONLY)
+        self.widget = widget = wx.ComboBox(self.parent_widget(), 
+                                           style=wx.CB_READONLY)
+        widget.SetDoubleBuffered(True)
 
     def initialize_widget(self):
         """ Intializes the widget with the attributes of this instance.

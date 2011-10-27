@@ -1,3 +1,7 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 import wx
 
 from traits.api import implements
@@ -26,7 +30,8 @@ class WXCheckBox(WXToggleControl):
         """ Creates and the wx.CheckBox.
 
         """
-        self.widget = wx.CheckBox(self.parent_widget())
+        self.widget = widget = wx.CheckBox(self.parent_widget())
+        widget.SetDoubleBuffered(True)
         
     #---------------------------------------------------------------------------
     # Implementation

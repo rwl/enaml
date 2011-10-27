@@ -1,27 +1,25 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from .qt import QtGui
-
-from traits.api import implements
-
 from .qt_toggle_control import QtToggleControl
 
-from ..radio_button import IRadioButtonImpl
+from ..radio_button import AbstractTkRadioButton
 
 
-class QtRadioButton(QtToggleControl):
-    """ A PySide implementation of RadioButton.
+class QtRadioButton(QtToggleControl, AbstractTkRadioButton):
+    """ A Qt implementation of RadioButton.
 
     See Also
     --------
     RadioButton
 
     """
-    implements(IRadioButtonImpl)
-
-    #---------------------------------------------------------------------------
-    # IRadioButtonImpl interface
-    #---------------------------------------------------------------------------
-
-    def create_widget(self):
+    #--------------------------------------------------------------------------
+    # Setup methods
+    #--------------------------------------------------------------------------
+    def create(self):
         """ Creates the underlying Qt widget.
         
         """
@@ -32,6 +30,7 @@ class QtRadioButton(QtToggleControl):
         public consumption.
 
         """
+        super(QtRadioButton, self).bind()
         widget = self.widget
         widget.toggled.connect(self.on_toggled)
         widget.pressed.connect(self.on_pressed)

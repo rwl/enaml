@@ -1,20 +1,30 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
+from abc import abstractmethod
+
 from traits.api import List, Any, Event, Callable, Instance
 
-from .control import Control, IControlImpl
+from .control import Control, AbstractTkControl
 
 
-class IComboBoxImpl(IControlImpl):
+class AbstractTkComboBox(AbstractTkControl):
 
-    def parent_items_changed(self, items):
+    @abstractmethod
+    def shell_items_changed(self, items):
         raise NotImplementedError
-    
-    def parent_value_changed(self, value):
+
+    @abstractmethod
+    def shell_items_items_changed(self, items):
+        raise NotImplementedError
+
+    @abstractmethod
+    def shell_value_changed(self, value):
         raise NotImplementedError
         
-    def parent_items_items_changed(self, items_event):
-        raise NotImplementedError
-
-    def parent_to_string_changed(self, to_string):
+    @abstractmethod
+    def shell_to_string_changed(self, to_string):
         raise NotImplementedError
     
 
@@ -29,40 +39,28 @@ class ComboBox(Control):
     that does not exist in the list of items then the value is ignored 
     and the box is deselected.
 
-    Attributes
-    ----------
-    items : List(Any)
-        The objects that compose the collection.
-    
-    value : Any
-        The currently selected item from the collection.
-
-    to_string : Callable
-        A callable function to convert the objects in the items list to 
-        strings for display. This function should convert None to the
-        empty string.
-
-    selected : Event
-        Fired when a new selection is made. The args object will
-        contain the selection.
-
     """
+    #: The objects that compose the collection.
     items = List(Any)
 
+    #: The currently selected item from the collection.
     value = Any
 
+    #: A callable which will convert the objects in the items list to 
+    #: strings for display. This callable should convert None to the
+    #: empty string.
     to_string = Callable(str)
 
+    #: Fired when a new selection is made. The args object will
+    #: contain the selection.
     selected = Event
 
-    #---------------------------------------------------------------------------
-    # Overridden parent class traits
-    #---------------------------------------------------------------------------
-    toolkit_impl = Instance(IComboBoxImpl)
+    #: Overridden parent class trait
+    abstract_obj = Instance(AbstractTkComboBox)
     
-    #def _items_items_changed(self):
-    #    self.toolkit_impl.items_changed()
-
-
-ComboBox.protect('selected')
+    # XXX we need to have the items handler here because the 
+    # .add_trait_listener call does not add items event handlers
+    # properly
+    def _items_items_changed(self, items):
+        self.abstract_obj.shell_items_items_changed(items)
 

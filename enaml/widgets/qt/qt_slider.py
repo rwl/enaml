@@ -1,10 +1,11 @@
+#------------------------------------------------------------------------------
+#  Copyright (c) 2011, Enthought, Inc.
+#  All rights reserved.
+#------------------------------------------------------------------------------
 from .qt import QtGui, QtCore
-
-from traits.api import implements, Bool, TraitError
-
 from .qt_control import QtControl
 
-from ..slider import ISliderImpl
+from ..slider import AbstractTkSlider
 
 from ...enums import Orientation, TickPosition
 
@@ -22,12 +23,30 @@ TICK_POS_MAP = {TickPosition.DEFAULT: QtGui.QSlider.NoTicks,
                 TickPosition.NO_TICKS: QtGui.QSlider.NoTicks}
 
 # A map from Enaml enums to Qt constants for horizontal or vertical orientation.
-ORIENTATION_MAP = {Orientation.DEFAULT: QtCore.Qt.Vertical,
-                   Orientation.HORIZONTAL: QtCore.Qt.Horizontal,
+ORIENTATION_MAP = {Orientation.HORIZONTAL: QtCore.Qt.Horizontal,
                    Orientation.VERTICAL: QtCore.Qt.Vertical}
 
 
-class QtSlider(QtControl):
+# Qt Slider does not return TicksLeft and TicksRight it always
+# converts these to TicksAbove and TicksBelow so we need to check
+# the orientation in order to return the right result
+
+# A map from horizontal QSlider TickPosition values to Enaml constants.
+HOR_TICK_POS_MAP = {QtGui.QSlider.NoTicks: TickPosition.DEFAULT,
+                    QtGui.QSlider.TicksAbove: TickPosition.TOP,
+                    QtGui.QSlider.TicksBelow: TickPosition.BOTTOM,
+                    QtGui.QSlider.TicksBothSides: TickPosition.BOTH,
+                    QtGui.QSlider.NoTicks: TickPosition.NO_TICKS}
+
+# A map from vertical QSlider TickPosition values to Enaml constants.
+VERT_TICK_POS_MAP = {QtGui.QSlider.NoTicks: TickPosition.DEFAULT,
+                    QtGui.QSlider.TicksAbove: TickPosition.LEFT,
+                    QtGui.QSlider.TicksBelow: TickPosition.RIGHT,
+                    QtGui.QSlider.TicksBothSides: TickPosition.BOTH,
+                    QtGui.QSlider.NoTicks: TickPosition.NO_TICKS}
+
+
+class QtSlider(QtControl, AbstractTkSlider):
     """ A Qt implementation of Slider.
 
     See Also
@@ -35,132 +54,101 @@ class QtSlider(QtControl):
     Slider
 
     """
-    implements(ISliderImpl)
-
-    # A mechanism to prevent update cycles when syncing `parent.value` with
-    # `parent.slider_pos`.
-    _sync_lock = Bool
-
-    #---------------------------------------------------------------------------
-    # ISliderImpl interface
-    #---------------------------------------------------------------------------
-    def create_widget(self):
+    #--------------------------------------------------------------------------
+    # Setup Methods
+    #--------------------------------------------------------------------------
+    def create(self):
         """ Creates the underlying QSlider widget.
 
         """
         self.widget = QtGui.QSlider(parent=self.parent_widget())
 
-    def initialize_widget(self):
+    def initialize(self):
         """ Initializes the attributes of the toolkit widget.
 
         """
-        parent = self.parent
-        parent._down = False
-        parent.slider_pos = parent.to_slider(parent.value)
+        super(QtSlider, self).initialize()
+        shell = self.shell_obj
+        shell._down = False
 
-        # We hard-coded range for the widget since we are managing the
-        # conversion.
-        self.set_range(0, SLIDER_MAX)
-        self.set_position(parent.slider_pos)
-        self.set_orientation(parent.orientation)
-        self.set_tick_position(parent.tick_position)
-        self.set_tick_frequency(parent.tick_interval)
-        self.set_single_step(parent.single_step)
-        self.set_page_step(parent.page_step)
-        self.set_tracking(parent.tracking)
+        self.set_range(shell.minimum, shell.maximum)
+        self.set_position(shell.value)
+        self.set_orientation(shell.orientation)
+        self.set_tick_position(shell.tick_position)
+        self.set_tick_frequency(shell.tick_interval)
+        self.set_single_step(shell.single_step)
+        self.set_page_step(shell.page_step)
+        self.set_tracking(shell.tracking)
 
-        self.bind()
-
-    def parent_from_slider_changed(self, from_slider):
-        """ Update the slider value with based on the new function
-
-        Arguments
-        ---------
-        from_slider : Callable
-            A function that takes one argument to convert from the slider
-            postion to the appropriate Python value.
+    def bind(self):
+        """ connect the event handlers for the slider widget signals.
 
         """
-        parent = self.parent
-        parent.value = from_slider(parent.slider_pos)
+        super(QtSlider, self).bind()
+        widget = self.widget
+        widget.valueChanged.connect(self._on_slider_changed)
+        widget.sliderPressed.connect(self._on_pressed)
+        widget.sliderReleased.connect(self._on_released)
 
-    def parent_to_slider_changed(self, to_slider):
-        """ Update the slider position with based on the new function
-
-        Arguments
-        ---------
-        to_slider : Callable
-            A function that takes one argument to convert from a Python
-            value to the appropriate slider position.
-        """
-        parent = self.parent
-        parent.slider_pos = to_slider(parent.value)
-
-    def parent_slider_pos_changed(self, slider_pos):
-        """ Update the position in the slider widget
+    #--------------------------------------------------------------------------
+    # Implementation
+    #--------------------------------------------------------------------------
+    def shell_minimum_changed(self, minimum):
+        """ Update the slider when the converter class changes.
 
         """
-        if not self._sync_lock:
-            self._sync_lock = True
-            parent = self.parent
-            self.set_position(slider_pos)
-            parent.value = value = parent.from_slider(slider_pos)
-            parent.moved = value
-            self._sync_lock = False
+        shell = self.shell_obj
+        self.set_range(minimum, shell.maximum)
 
-    def parent_value_changed(self, value):
-        """ Update the slider position value
-
-        Update the `slider_pos` to respond to the `value` change. The
-        assignment to the slider_pos might fail because `value` is out
-        of range. In that case the last known good value is given back
-        to the value attribute.
+    def shell_maximum_changed(self, maximum):
+        """ Update the slider when the converter class changes.
 
         """
-        
-        if not self._sync_lock:
-            self._sync_lock = True
-            parent = self.parent
-            # The try...except block is required because we need to keep the
-            # `value` attribute in sync with the `slider_pos` and **valid**
-            try:
-                parent.slider_pos = parent.to_slider(value)
-            except TraitError as error:
-                # revert value
-                print error
-                parent.value = parent.from_slider(parent.slider_pos)
-                parent.invalid_value = error
-            finally:
-                self._sync_lock = False
+        shell = self.shell_obj
+        self.set_range(shell.minimum, maximum)
 
-    def parent_tracking_changed(self, tracking):
+    def shell_value_changed(self, value):
+        """ Update the slider position
+
+        The method validates the value before assigment. If it is out of
+        range (0.0, 1.0), truncate the value and updates the component value
+        attribute. No change notification is fired by these actions.
+
+        If other exceptions are fired during the assigments the component
+        value does not change and the widget position is unknown.
+
+        """
+        self.set_position(value)
+        self.shell_obj.moved = value
+
+    def shell_tracking_changed(self, tracking):
         """ Set the tracking event in the widget
 
         """
         self.set_tracking(tracking)
 
-    def parent_single_step_changed(self, single_step):
+    def shell_single_step_changed(self, single_step):
         """ Update the the line step in the widget.
 
         """
         self.set_single_step(single_step)
 
-    def parent_page_step_changed(self, page_step):
+    def shell_page_step_changed(self, page_step):
         """ Update the widget due to change in the line step.
 
         """
         self.set_page_step(page_step)
 
-    def parent_tick_interval_changed(self, tick_interval):
+    def shell_tick_interval_changed(self, tick_interval):
         """ Update the tick marks interval.
 
         """
-        parent = self.parent
+        shell = self.shell
         self.set_tick_frequency(tick_interval)
-        self.set_single_step(parent.single_step)
-        self.set_page_step(parent.page_step)
+        self.set_single_step(shell.single_step)
+        self.set_page_step(shell.page_step)
 
-    def parent_tick_position_changed(self, tick_position):
+    def shell_tick_position_changed(self, tick_position):
         """ Update the widget due to change in the tick position
 
         The method ensures that the tick position style can be applied
@@ -169,7 +157,7 @@ class QtSlider(QtControl):
         """
         self.set_tick_position(tick_position)
 
-    def parent_orientation_changed(self, orientation):
+    def shell_orientation_changed(self, orientation):
         """ Update the widget due to change in the orientation attribute
 
         The method applies the orientation style and fixes the tick position
@@ -178,34 +166,13 @@ class QtSlider(QtControl):
         """
         self.set_orientation(orientation)
 
-    #---------------------------------------------------------------------------
-    # Implementation
-    #---------------------------------------------------------------------------
-
-    def bind(self):
-        """ Binds the event handlers for the slider widget.
-
-        Individual event binding was preferred instead of events that
-        are platform specific (e.g. wx.EVT_SCROLL_CHANGED) or group
-        events (e.g. wx.EVT_SCROLL), to facilitate finer control on
-        the behaviour of the widget.
-
-        """
-        widget = self.widget
-        widget.valueChanged.connect(self._on_slider_changed)
-        widget.sliderPressed.connect(self._on_pressed)
-        widget.sliderReleased.connect(self._on_released)
-    
-
     def _on_slider_changed(self, value):
-        """ Respond to a (possible) change in value from the ui.
-
-        Updated the value of the slider_pos based on the possible change
-        from the wxWidget. The `slider_pos` trait will fire the moved
-        event only if the value has changed.
+        """ Respond to a change in value of the slider widget.
 
         """
-        self.parent.slider_pos = self.get_position()
+        shell = self.shell_obj
+        new_value = self.get_position()
+        shell.value = new_value
 
     def _on_pressed(self):
         """ Update if the left button was pressed.
@@ -215,25 +182,25 @@ class QtSlider(QtControl):
         `down` attribute.
 
         """
-        parent = self.parent
-        parent._down = True
-        parent.pressed = True
+        shell = self.shell_obj
+        shell._down = True
+        shell.pressed = True
 
     def _on_released(self):
         """ Update if the left button was released
 
         Checks if the `down` attribute was set. In that case the
-        function calls the `_on_slider_changed` function, fires the
-        release event and sets the `down` attribute to false.
+        function fires the release event and sets the `down` attribute to
+        false.
 
         """
-        parent = self.parent
-        ##self._on_slider_changed(event)
-        parent._down = False
-        parent.released = True
+        shell = self.shell_obj
+        if shell._down:
+            shell._down = False
+            shell.released = True
 
     def set_single_step(self, step):
-        """ Set the single step attribute in the wx widget.
+        """ Set the single step attribute in the Qt widget.
 
         Arguments
         ---------
@@ -243,11 +210,10 @@ class QtSlider(QtControl):
 
         """
         widget = self.widget
-        tick_interval = widget.tickInterval()
-        widget.setSingleStep(step * tick_interval)
+        widget.setSingleStep(step)
 
     def set_page_step(self, step):
-        """ Set the page step attribute in the wx widget.
+        """ Set the page step attribute in the Qt widget.
 
         Arguments
         ---------
@@ -259,57 +225,22 @@ class QtSlider(QtControl):
 
         """
         widget = self.widget
-        tick_interval = widget.tickInterval()
-        widget.setPageStep(step * tick_interval)
-
-    def set_position(self, value):
-        """Set the slider position to value.
-
-        Converts the 'value' to an integer and changes the position of
-        the slider in the widget if necessary.
-
-        Arguments
-        ---------
-        value : float
-            The new position of the slider in the range 0.0 - 1.0.
-
-        """
-        position = value * SLIDER_MAX
-        if position != self.widget.value():
-            self.widget.setValue(position)
-
-    def get_position(self):
-        """Get the slider position.
-
-        Read the slider position from the widget and convert it to a
-        float.
-
-        Returns
-        -------
-        value : float
-            The position of the widget slider in the range 0.0 - 1.0.
-
-        """
-        wx_position = float(self.widget.value())
-        return wx_position / SLIDER_MAX
+        widget.setPageStep(step)
 
     def set_tick_position(self, ticks):
         """ Apply the tick position in the widget.
 
+        The tick_position is addapted to reflect the current orientation.
+        This is agrees with how the QSlider is behaving.
+
         Arguments
         ---------
         ticks : TickPosition
-            The tick position
-
-        Returns
-        -------
-        result : boolean
-            True if the new value was valid. False if the value is
-            invalid.
-
+            The tick position.
         """
         constant = TICK_POS_MAP[ticks]
         self.widget.setTickPosition(constant)
+        self.sync_tick_position()
 
     def set_orientation(self, orientation):
         """ Set the slider orientation
@@ -322,6 +253,7 @@ class QtSlider(QtControl):
         """
         constant = ORIENTATION_MAP[orientation]
         self.widget.setOrientation(constant)
+        self.sync_tick_position()
 
     def set_tracking(self, tracking):
         """ Receive a 'valueChanged' signal when the slider is dragged.
@@ -355,6 +287,32 @@ class QtSlider(QtControl):
         ---------
         interval: float
             The step size for tick marks.
-            
+
         """
-        self.widget.setTickInterval(interval * SLIDER_MAX)
+        self.widget.setTickInterval(interval)
+
+    def set_position(self, value):
+        """ Validate the position value.
+
+        """
+        self.widget.setValue(value)
+    def get_position(self):
+        """ Get the slider position from the widget.
+
+        """
+        return self.widget.value()
+
+    def sync_tick_position(self):
+        """ Syncornize the tick_position with the widget
+
+        The QSlider automatically updates or adaptes the tick position but
+        we still need to update the enaml component, so that it is in sync.
+
+        """
+        shell = self.shell_obj
+        orientation = shell.orientation
+        tick_pos = self.widget.tickPosition()
+        if orientation == Orientation.VERTICAL:
+            shell.tick_position = VERT_TICK_POS_MAP[tick_pos]
+        else:
+            shell.tick_position = HOR_TICK_POS_MAP[tick_pos]
