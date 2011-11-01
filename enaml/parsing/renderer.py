@@ -57,7 +57,7 @@ class Code(object):
     
     def getvalue(self):
         res = CODE_HEADER + self._io.getvalue()
-        return res
+        return res.strip('\n') + '\n' # hack to normalize trailing newlines
 
 
 class ASTRenderer(object):
@@ -107,7 +107,11 @@ class ASTRenderer(object):
         self.code.newline()
     
     def visit_EnamlRawPython(self, raw_python):
+        self.code.write(':: python ::')
+        self.code.newline()
         self.code.write(raw_python.py_txt)
+        self.code.newline()
+        self.code.write(':: end ::')
         self.code.newline()
     
     def visit_EnamlDefine(self, enaml_defn):
@@ -206,6 +210,12 @@ class ASTRenderer(object):
 
     def render_Expression(self, expression):
         return self.visit_render(expression.body)
+
+    def visit_Module(self, mod):
+        for stmt in mod.body:
+            self.visit(stmt)
+            self.code.newline()
+        
 
     #--------------------------------------------------------------------------
     # ast.stmt Handlers
