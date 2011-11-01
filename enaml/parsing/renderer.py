@@ -107,12 +107,9 @@ class ASTRenderer(object):
         self.code.newline()
     
     def visit_EnamlRawPython(self, raw_python):
-        self.code.write(':: python ::')
-        self.code.newline()
-        self.code.write(raw_python.py_txt)
-        self.code.newline()
-        self.code.write(':: end ::')
-        self.code.newline()
+        self.code.write_i(':: python ::')
+        self.code.write_i(raw_python.py_txt)
+        self.code.write_i(':: end ::')
     
     def visit_EnamlDefine(self, enaml_defn):
         name = enaml_defn.name

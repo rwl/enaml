@@ -8,8 +8,5 @@ def foo():
 class Test(object):
     def foo():
         return 11
-:: end ::
 
-defn MainWindow:
-    Window:
-        pass
+:: end ::
