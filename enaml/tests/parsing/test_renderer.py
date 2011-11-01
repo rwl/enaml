@@ -22,6 +22,7 @@ class TestRenderer(unittest.TestCase):
         else:
             raise IOError('Could not find directory at "%s"' % directory)
     
+    
     def roundtrip_render(self, filename):
         """ Generate an AST from the filename, and render it without error
         """
@@ -38,10 +39,10 @@ class TestRenderer(unittest.TestCase):
             renderer.render(ast)
         except Exception as exc:
             self.fail('failed to render example "%s": %s' % (filename, exc))
-        
-    
-    def roundtrip_parse_rendered(self, filename):
-        """ Generate an AST from the filename, and render it, and parse the rendered code
+
+            
+    def roundtrip_render_strict(self, filename):
+        """ Generate an AST from the filename, and render it without error
         """
         print 'processing', filename
         with file(filename) as fp:
@@ -52,7 +53,26 @@ class TestRenderer(unittest.TestCase):
             print 'bad example', filename
             return
         renderer = ASTRenderer()
-        rendered = renderer.render(ast)
+        try:
+            result = renderer.render(ast)
+        except Exception as exc:
+            self.fail('failed to render example "%s": %s' % (filename, exc))
+        self.assertEqual(code, result)
+    
+    
+    def roundtrip_parse_rendered(self, filename):
+        """ Generate an AST from the filename, and render it, and parse the rendered code
+        """
+        print 'processing', filename
+        with file(filename) as fp:
+            code = fp.read()
+        try:
+            ast = parse(code)
+            renderer = ASTRenderer()
+            rendered = renderer.render(ast)
+        except EnamlSyntaxError as exc:
+            print 'bad example', filename
+            return
         try:
             parse(rendered)
         except Exception as exc:
@@ -71,4 +91,12 @@ class TestRenderer(unittest.TestCase):
         examples_dir = os.path.join(package_dir, 'examples')
         self.process_directory(examples_dir, self.roundtrip_render)
         self.process_directory(examples_dir, self.roundtrip_parse_rendered)
+    
+    def test_local_cases(self):
+        """The renderer should render all files in this directory without raising an exception"""
+        filename = __file__
+        directory, mod = os.path.split(filename)
+        test_dir = os.path.join(directory, 'renderer_test_files')
+        self.process_directory(test_dir, self.roundtrip_render_strict)
+    
         
