@@ -107,9 +107,11 @@ class ASTRenderer(object):
         self.code.newline()
     
     def visit_EnamlRawPython(self, raw_python):
-        self.code.write_i(':: python ::')
-        self.code.write_i(raw_python.py_txt)
-        self.code.write_i(':: end ::')
+        codestring = raw_python.py_txt[1:] # remove extra newline
+        self.code.write(':: python ::')
+        print repr(raw_python.py_txt)
+        self.code.write(codestring)
+        self.code.write(':: end ::')
     
     def visit_EnamlDefine(self, enaml_defn):
         name = enaml_defn.name
@@ -142,6 +144,10 @@ class ASTRenderer(object):
             self.code.write_i('%s(%s) -> %s, %s:' % (name, arguments, unpack, captures))
         elif arguments and (unpack or captures):
             self.code.write_i('%s(%s) -> %s%s:' % (name, arguments, unpack, captures))
+        elif unpack and captures:
+            self.code.write_i('%s -> %s, %s:' % (name, unpack, captures))
+        elif unpack or captures:
+            self.code.write_i('%s -> %s%s:' % (name, unpack, captures))
         elif arguments:
             self.code.write_i('%s(%s):' % (name, arguments))
         else:
@@ -172,7 +178,7 @@ class ASTRenderer(object):
         return self.visit_render(enaml_argument.py_ast)        
     
     def render_EnamlKeywordArgument(self, enaml_argument):
-        name = enam_argument.name
+        name = enaml_argument.name
         value = self.visit_render(enaml_argument.py_ast)
         return '%s = %s' % (name, value)
     
