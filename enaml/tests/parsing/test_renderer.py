@@ -47,11 +47,7 @@ class TestRenderer(unittest.TestCase):
         print 'processing', filename
         with file(filename) as fp:
             code = fp.read()
-        try:
-            ast = parse(code)
-        except EnamlSyntaxError as exc:
-            print 'bad example', filename
-            return
+        ast = parse(code)
         renderer = ASTRenderer()
         try:
             result = renderer.render(ast)
