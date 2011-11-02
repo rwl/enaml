@@ -6,8 +6,9 @@
 import ast
 import re
 
-from .parsing.parser import parser
-from .parsing import enaml_ast
+import enaml
+from .parser import enaml_ast, translate_operator
+from .enaml_compiler import EnamlDefinition, DefnBodyCompiler
 
 identifier_pattern = r'[_A-Za-z][_A-Za-z0-9]*'
 number_pattern = r'-?[1-9][0-9]*'
@@ -22,7 +23,7 @@ lhs_matcher = re.compile(
 def get_expr(code):
     """ Given an expression string, return an ast.Expression object
     """
-    return ast.parse(code).body[0]
+    return ast.parse(code, 'Enaml', mode='eval')
 
 class EnamlPyDefn(object):
     """ Base class for the Enaml Python API defn AST builders
@@ -75,7 +76,7 @@ class EnamlPyAssignment(object):
         self.rhs = rhs
     
     def ast(self):
-        match = lhs_matcher(self.lhs)
+        match = lhs_matcher.match(self.lhs)
         if match is None:
             raise SyntaxError('Invalid assignment left-hand side "%s"' % self.lhs)
         if match.group('index'):
@@ -97,15 +98,33 @@ class EnamlPyAssignment(object):
         return enaml_ast.EnamlAssignment(lhs, self.op, rhs)
 
 class Default(EnamlPyAssignment):
-    op = '='
+    op = translate_operator('=')
 
 class Delegate(EnamlPyAssignment):
-    op = ':='
+    op = translate_operator(':=')
 
 class Bind(EnamlPyAssignment):
-    op = '<<'
+    op = translate_operator('<<')
 
 class Notify(EnamlPyAssignment):
-    op = '>>'
+    op = translate_operator('>>')
+
+def compile_defn(node, global_ns):
+    exec('', global_ns, {}) # ensure builtins
+    computed_defaults = []
+    for expr in node.parameters.defaults:
+        code = compile(expr, 'Enaml', mode='eval')
+        computed = eval(code, global_ns)
+        computed_defaults.append(computed)
+        
+    args = node.parameters.args 
+    with enaml.imports():
+        instructions = DefnBodyCompiler.compile(set(args), node.body)
+    name = node.name
+    definition = EnamlDefinition(
+        name, instructions, args, computed_defaults, global_ns,
+    )
+    return definition
+        
 
 
