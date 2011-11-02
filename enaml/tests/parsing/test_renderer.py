@@ -89,7 +89,7 @@ class TestRenderer(unittest.TestCase):
         self.process_directory(examples_dir, self.roundtrip_parse_rendered)
     
     def test_local_cases(self):
-        """The renderer should render all files in this directory without raising an exception"""
+        """The renderer should round-trip all files in 'render_test_files' exactly"""
         filename = __file__
         directory, mod = os.path.split(filename)
         test_dir = os.path.join(directory, 'renderer_test_files')
