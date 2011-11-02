@@ -4,45 +4,35 @@
 #------------------------------------------------------------------------------
 
 import enaml
-from enaml.parsing.builders import EnamlPyDefn, EnamlPyWidget, \
-    Default, Delegate, Bind, Notify, compile_defn
+from enaml.parsing.builders import enaml_defn, make_widget, \
+    simple, delegate, bind, notify
 
-class Window(EnamlPyWidget):
-    pass
 
-class Label(EnamlPyWidget):
-    pass
 
-class Field(EnamlPyWidget):
-    pass
-
-def build_defn():
-    pydefn = EnamlPyDefn('MainWindow',
-        Window(
-            Delegate('title', "field.value"),
-            Default('constraints', """[
-                vertical(top, frame, bottom),
-                vertical(top, field, bottom),
-                horizontal(left, frame, field, right),
-            ]"""),
-            Label(
-                Default('text', '"Title:"'),
-                unpack=['frame']
-            ),
-            Field(
-                Default('value', "'It Works!'"),
-                unpack=['field'],
-            )
+@enaml_defn
+def MainWindow():
+    
+    Window = make_widget('Window')
+    Label = make_widget('Label')
+    Field = make_widget('Field')
+    
+    return Window(
+        delegate('title', "field.value"),
+        simple('constraints', """[
+            vertical(top, frame, bottom),
+            vertical(top, field, bottom),
+            horizontal(left, frame, field, right),
+        ]"""),
+        Label('frame',
+            simple('text', '"Title:"'),
+        ),
+        Field('field',
+            simple('value', "'It Works!'"),
         )
     )
-    defn_ast = pydefn.ast()
-    return compile_defn(defn_ast, {})
+
+print repr(MainWindow)
 
 if __name__ == '__main__':
-    defn = build_defn()
-    print defn.__name__
-    print defn.__code__
-    print defn.__globals__.keys()
-
-    view = defn()
+    view = MainWindow()
     view.show()

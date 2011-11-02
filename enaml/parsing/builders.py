@@ -5,10 +5,12 @@
 
 import ast
 import re
+import functools
 
 import enaml
 from .parser import enaml_ast, translate_operator
 from .enaml_compiler import EnamlDefinition, DefnBodyCompiler
+from .virtual_machine import evalcode
 
 identifier_pattern = r'[_A-Za-z][_A-Za-z0-9]*'
 number_pattern = r'-?[1-9][0-9]*'
@@ -28,11 +30,11 @@ def get_expr(code):
 class EnamlPyDefn(object):
     """ Base class for the Enaml Python API defn AST builders
     """
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, args=None, defaults=None, body=None):
         self.name = name
-        self.body = args
-        self.args = kwargs.get('args', [])
-        self.defaults = kwargs.get('defaults', [])
+        self.body = body if body is not None else []
+        self.args = args if args is not None else []
+        self.defaults = defaults if defaults is not None else []
     
     def ast(self):
         defaults = [get_expr(expr) for expr in self.defaults]
@@ -40,22 +42,36 @@ class EnamlPyDefn(object):
         return enaml_ast.EnamlDefine(self.name, parameters,
             [body_item.ast() for body_item in self.body])
 
-class EnamlPyWidget(object):
-    """ Base class for the Enaml Python API widget AST builders
+    def compile(self, global_ns):
+        node = self.ast()
+        exec('', global_ns, {}) # ensure builtins
+        computed_defaults = []
+        for expr in node.parameters.defaults:
+            code = compile(expr, 'Enaml', mode='eval')
+            computed = eval(code, global_ns)
+            computed_defaults.append(computed)
+            
+        args = node.parameters.args 
+        with enaml.imports():
+            instructions = DefnBodyCompiler.compile(set(args), node.body)
+        name = node.name
+        definition = EnamlDefinition(
+            name, instructions, args, computed_defaults, global_ns,
+        )
+        return definition
+
+
+class EnamlPyCall(object):
+    """ Base class for the Enaml Python API call AST builders
     """
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, name, *args, **kwargs):
+        self.name = name
         self.body = args
         self.args = kwargs.get('args', [])
         self.kwargs = kwargs.get('kwargs', [])
         self.unpack = kwargs.get('unpack', [])
         self.captures = kwargs.get('captures', [])
-    
-    @property
-    def name(self):
-        """ Return the class name
-        """
-        return self.__class__.__name__
     
     def ast(self):
         arguments = [enaml_ast.EnamlArgument(get_expr(arg))
@@ -71,8 +87,9 @@ class EnamlPyWidget(object):
 class EnamlPyAssignment(object):
     """ Base class for the Enaml Python API operator AST builders
     """
-    def __init__(self, lhs, rhs):
+    def __init__(self, lhs, op, rhs):
         self.lhs = lhs
+        self.op = op
         self.rhs = rhs
     
     def ast(self):
@@ -97,34 +114,55 @@ class EnamlPyAssignment(object):
         
         return enaml_ast.EnamlAssignment(lhs, self.op, rhs)
 
-class Default(EnamlPyAssignment):
-    op = translate_operator('=')
+# Utility Factories
 
-class Delegate(EnamlPyAssignment):
-    op = translate_operator(':=')
+class EnamlDefinitionDecorator(EnamlDefinition):
+    """ A subclass of EnamlDefinition that acts as a decorator of a function that
+    returns Python API objects.
+    """
 
-class Bind(EnamlPyAssignment):
-    op = translate_operator('<<')
-
-class Notify(EnamlPyAssignment):
-    op = translate_operator('>>')
-
-def compile_defn(node, global_ns):
-    exec('', global_ns, {}) # ensure builtins
-    computed_defaults = []
-    for expr in node.parameters.defaults:
-        code = compile(expr, 'Enaml', mode='eval')
-        computed = eval(code, global_ns)
-        computed_defaults.append(computed)
+    def __init__(self, fn):
+        self.fn = fn
+        self.__name__ = fn.func_name
+        self.__args__ = fn.func_code.co_varnames[:fn.func_code.co_argcount]
+        self.__defaults__ = fn.func_defaults if fn.func_defaults is not None else []
+        self.__globals__ = fn.func_globals
+    
+    def __enaml_call__(self, *args, **kwargs):
+        body = self.fn(*args, **kwargs)
+        if isinstance(body, EnamlPyCall):
+            body = [body]
+        body_ast = [body_item.ast() for body_item in body]
+        code = DefnBodyCompiler.compile(set(self.__args__), body_ast)
         
-    args = node.parameters.args 
-    with enaml.imports():
-        instructions = DefnBodyCompiler.compile(set(args), node.body)
-    name = node.name
-    definition = EnamlDefinition(
-        name, instructions, args, computed_defaults, global_ns,
-    )
-    return definition
+        f_locals = self._build_locals(args, kwargs)
+        f_globals = self.__globals__
+        return evalcode(code, f_globals, f_locals)
+
+enaml_defn = EnamlDefinitionDecorator
+
+def make_widget(name):
+    """ Utility function that creates a factory for widget calls
+    """
+    def widget(*args):
+        if len(args) > 0 and isinstance(args[0], str):
+            unpack = [args[0]]
+            args = args[1:]
+            return EnamlPyCall(name, unpack=unpack, *args)
+        else:
+            return EnamlPyCall(name, *args)
+    return widget
+
+def make_operator(symbol):
+    op = translate_operator(symbol)
+    def operator(lhs, rhs):
+        return EnamlPyAssignment(lhs, op, rhs)
+    return operator
+
+simple = make_operator('=')
+delegate = make_operator(':=')
+bind = make_operator('<<')
+notify = make_operator('>>')
         
 
 
