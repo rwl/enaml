@@ -6,9 +6,9 @@
 import unittest
 import os
 
-from ...exceptions import EnamlSyntaxError
-from ...parsing.parser import parse
-from ...parsing.renderer import ASTRenderer
+from enaml.exceptions import EnamlSyntaxError
+from enaml.parsing.parser import parse
+from enaml.parsing.renderer import ASTRenderer
 
 class TestRenderer(unittest.TestCase):
     
