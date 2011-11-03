@@ -1,38 +1,16 @@
-#------------------------------------------------------------------------------
-#  Copyright (c) 2011, Enthought, Inc.
-#  All rights reserved.
-#------------------------------------------------------------------------------
-from traits.api import implements
-
 from .wx_component import WXComponent
 
-from ..container import IContainerImpl
+from ..container import AbstractTkContainer
 
 
-class WXContainer(WXComponent):
+class WXContainer(WXComponent, AbstractTkContainer):
     """ A wxPython implementation of Container.
 
-    The WXContainer class serves as a base class for other container
-    widgets. It is not meant to be used directly.
-
-    See Also
-    --------
-    Container
+    WXContainer is usually to be used as a base class for other container
+    widgets. However, it may also be used directly as an undecorated container
+    for widgets for layout purposes.
 
     """
-    implements(IContainerImpl)
 
-    #---------------------------------------------------------------------------
-    # IContainerImpl interface
-    #---------------------------------------------------------------------------
-    def create_style_handler(self):
-        """ Creates and sets the window style handler.
-
-        """
-        pass
-    
-    def initialize_style(self):
-        """ Initializes the style for the window.
-
-        """
-        pass
+    # The WXComponent implementation is enough.
+    pass

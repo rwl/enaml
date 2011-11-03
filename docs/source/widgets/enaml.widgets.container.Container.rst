@@ -1,13 +1,17 @@
 Container
-=========
+=================================
 
 .. currentmodule:: enaml.widgets.container
 
 .. autoclass:: Container
 
 
+Backends
+--------
+
+
 Qt
---
+^^
 
 .. inheritance-diagram::
     enaml.widgets.qt.qt_container.QtContainer
@@ -16,7 +20,7 @@ Qt
 .. autoclass:: enaml.widgets.qt.qt_container.QtContainer
 
 Wx
---
+^^
 
 .. inheritance-diagram::
     enaml.widgets.wx.wx_container.WXContainer

@@ -9,18 +9,18 @@ from traits.api import HasStrictTraits, Callable, Str, WeakRef
 
 class Constructor(HasStrictTraits):
     """ The constructor class to use to populate the toolkit.
-    
+
     """
     #: A callable object which returns the shell class to use
     #: for the widget.
     shell_loader = Callable
 
-    #: A callable object which returns the abstract implementation class 
+    #: A callable object which returns the abstract implementation class
     #: to use for the widget.
     abstract_loader = Callable
 
     #: The key with which this constructor was added to the toolkit.
-    #: It is set by the toolkit and used as the type name of the 
+    #: It is set by the toolkit and used as the type name of the
     #: instantiated component.
     style_type = Str
 
@@ -37,11 +37,11 @@ class Constructor(HasStrictTraits):
         shell_loader : Callable
             A callable object which returns the shell class to use
             for the widget.
-    
+
         abstract_loader : Callable
-            A callable object which returns the abstract implementation 
+            A callable object which returns the abstract implementation
             class to use for the widget.
-        
+
         """
         super(Constructor, self).__init__()
         self.shell_loader = shell_loader
@@ -59,13 +59,16 @@ class Constructor(HasStrictTraits):
     def build(self, *args, **kwargs):
         """ Calls the loaders and assembles the component.
 
-        Subclasses should override this method to implement custom 
+        Subclasses should override this method to implement custom
         construction behavior if the default is not sufficient.
 
         Parameters
         ----------
-        *args, **kwargs
-            The args and kwargs with which this constructor was called 
+        *args :
+            Positional arguments with which this constructor was called
+            from the enaml source code.
+        **kwargs :
+            Keyword arguments with which this constructor was called
             from the enaml source code.
 
         """
@@ -75,7 +78,7 @@ class Constructor(HasStrictTraits):
                               toolkit=self.toolkit,
                               abstract_obj=abstract_cls())
         return component
-    
+
     def clone(self, shell_loader=None, abstract_loader=None):
         """ Creates a clone of this constructor, optionally changing
         out one or both of the loaders.
@@ -95,7 +98,7 @@ class Toolkit(dict):
     builtin scopes when executing an Enaml function or expression.
 
     XXX - more documentation
-    
+
     """
     __stack__ = []
 
@@ -103,7 +106,7 @@ class Toolkit(dict):
 
     @classmethod
     def active_toolkit(cls):
-        """ A classmethod that returns the currently active toolkit, 
+        """ A classmethod that returns the currently active toolkit,
         or the default toolkit if there is not active toolkit context.
 
         """
@@ -112,7 +115,7 @@ class Toolkit(dict):
             tk = cls.default_toolkit()
         else:
             tk = stack[-1]
-        return tk 
+        return tk
 
     @classmethod
     def default_toolkit(cls):
@@ -126,15 +129,15 @@ class Toolkit(dict):
         return tk
 
     def __init__(self, *args, **kwargs):
-        """ Initialize a toolkit object using the same constructor 
-        signature as dict(). This overridden constructor ensures that 
+        """ Initialize a toolkit object using the same constructor
+        signature as dict(). This overridden constructor ensures that
         the style types are properly assigned to the constructors.
 
         """
         super(Toolkit, self).__init__(*args, **kwargs)
         for key, value in self.iteritems():
             self[key] = value
-                
+
     def __setitem__(self, key, value):
         """ Overridden dict.__setitem__ to apply style types to the
         constructors.
@@ -148,7 +151,7 @@ class Toolkit(dict):
             value.style_type = key
             value.toolkit = self
         super(Toolkit, self).__setitem__(key, value)
-        
+
     def update(self, other=None, **kwargs):
         """ Overridden from dict.update to apply style types to the
         constructors.
@@ -167,12 +170,12 @@ class Toolkit(dict):
                 self[k] = v
         if kwargs:
             self.update(kwargs)
-    
+
     def setdefault(self, key, default=None):
         """ Overridden from dict.setdefault to apply style types to the
         constructors.
-        
-        """ 
+
+        """
         try:
             return self[key]
         except KeyError:
@@ -185,7 +188,7 @@ class Toolkit(dict):
 
         """
         self.__stack__.append(self)
-    
+
     def __exit__(self, *args, **kwargs):
         """ A context manager method that pops this toolkit from the
         active toolkit stack.
@@ -198,7 +201,7 @@ class Toolkit(dict):
 
         """
         return self['__style_sheet__']
-    
+
     def _set_style_sheet(self, val):
         """ Sets the default style sheet instance for this toolkit.
 
@@ -212,13 +215,13 @@ class Toolkit(dict):
 
         """
         return self['__create_app__']
-    
+
     def _set_create_app(self, val):
         """ Sets the app creation function for this toolkit.
 
         """
         self['__create_app__'] = val
-    
+
     create_app = property(_get_create_app, _set_create_app)
 
     def _get_start_app(self):
@@ -226,7 +229,7 @@ class Toolkit(dict):
 
         """
         return self['__start_app__']
-    
+
     def _set_start_app(self, val):
         """ Sets the start app function for this toolkit.
 
@@ -240,14 +243,26 @@ class Toolkit(dict):
 
         """
         return self.get('__app__')
-    
+
     def _set_app(self, val):
         """ Sets the application object for this toolkit.
 
         """
         self['__app__'] = val
-    
+
     app = property(_get_app, _set_app)
+
+    def _get_invoke_later(self):
+        """ Returns the function for invoking a function later in the event
+        loop.
+
+        """
+        return self.get('__invoke_later__')
+
+    def _set_invoke_later(self, val):
+        self['__invoke_later__'] = val
+
+    invoke_later = property(_get_invoke_later, _set_invoke_later)
 
 
 def default_toolkit():
@@ -256,7 +271,7 @@ def default_toolkit():
 
     """
     toolkit = os.environ.get('ETS_TOOLKIT', 'qt').lower()
-    
+
     if toolkit == 'qt' or toolkit == 'qt4':
         return qt_toolkit()
 
@@ -277,35 +292,43 @@ def qt_toolkit():
     from .widgets.qt.constructors import QT_CONSTRUCTORS
     from .util.guisupport import get_app_qt4, start_event_loop_qt4
     from .widgets.qt.styling import QT_STYLE_SHEET
-
+    from .widgets.qt.utils import invoke_later
+    from .widgets.layout.layout_helpers import LAYOUT_HELPERS
+    
     utils = {}
 
     toolkit = Toolkit(QT_CONSTRUCTORS)
-    
+
     toolkit.create_app = get_app_qt4
     toolkit.start_app = start_event_loop_qt4
     toolkit.style_sheet = QT_STYLE_SHEET
+    toolkit.invoke_later = invoke_later
     toolkit.update(utils)
     toolkit.update(OPERATORS)
+    toolkit.update(LAYOUT_HELPERS)
 
-    return toolkit 
+    return toolkit
 
 def wx_toolkit():
     """ Creates and return a toolkit object for the Wx backend.
 
     """
+    from .operators import OPERATORS
     from .widgets.wx.constructors import WX_CONSTRUCTORS
     from .util.guisupport import get_app_wx, start_event_loop_wx
     from .widgets.wx.styling import WX_STYLE_SHEET
+    from .widgets.wx.utils import invoke_later
 
     utils = {}
 
     toolkit = Toolkit(WX_CONSTRUCTORS)
-    
+
     toolkit.create_app = get_app_wx
     toolkit.start_app = start_event_loop_wx
     toolkit.style_sheet = WX_STYLE_SHEET
+    toolkit.invoke_later = invoke_later
     toolkit.update(utils)
+    toolkit.update(OPERATORS)
 
     return toolkit
 

@@ -6,10 +6,11 @@ import wx
 
 from enaml.widgets.wx.wx_date_edit import to_wx_date, from_wx_date
 
-from .wx_test_assistant import WXTestAssistant
+from .wx_test_assistant import WXTestAssistant, skip_nonwindows
 from .. import date_edit
 
 
+@skip_nonwindows
 class TestWXDateEdit(WXTestAssistant, date_edit.TestDateEdit):
     """ WXDateEdit tests. """
 
@@ -27,14 +28,14 @@ class TestWXDateEdit(WXTestAssistant, date_edit.TestDateEdit):
         date = widget.GetValue()
         return from_wx_date(date)
 
-    def get_minimum_date(self, widget):
+    def get_min_date(self, widget):
         """  Get the toolkits widget's maximum date attribute.
 
         """
         date = widget.GetLowerLimit()
         return from_wx_date(date)
 
-    def get_maximum_date(self, widget):
+    def get_max_date(self, widget):
         """ Get the toolkits widget's minimum date attribute.
 
         """

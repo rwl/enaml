@@ -83,9 +83,18 @@ def set_locations(node, lineno, col_offset):
 #------------------------------------------------------------------------------
 # Enaml Module
 #------------------------------------------------------------------------------
-def p_enaml(p):
-    ''' enaml : enaml_module ENDMARKER '''
+# These special rules to handle the variations of newline and endmarkers
+# are because of the various lexer states that deal with python blocks
+# and enaml code, as well as completely empty files.
+def p_enaml1(p):
+    ''' enaml : enaml_module ENDMARKER
+              | enaml_module NEWLINE ENDMARKER '''
     p[0] = p[1]
+
+
+def p_enaml2(p):
+    ''' enaml : NEWLINE ENDMARKER '''
+    p[0] = enaml_ast.EnamlModule([])
 
 
 def p_enaml_module(p):
@@ -117,6 +126,19 @@ def p_enaml_module_item1(p):
 def p_enaml_module_item2(p):
     ''' enaml_module_item : enaml_define '''
     p[0] = p[1]
+
+
+def p_enaml_module_item3(p):
+    ''' enaml_module_item : raw_python '''
+    p[0] = p[1]
+
+
+#------------------------------------------------------------------------------
+# Raw Python
+#------------------------------------------------------------------------------
+def p_enaml_raw_python(p):
+    ''' raw_python : PY_BLOCK '''
+    p[0] = enaml_ast.EnamlRawPython(p[1])
 
 
 #------------------------------------------------------------------------------
@@ -228,20 +250,32 @@ def p_enaml_keyword_parameter(p):
 #------------------------------------------------------------------------------
 def p_enaml_define_body(p):
     ''' enaml_define_body : NEWLINE INDENT enaml_calls DEDENT '''
-    p[0] = p[3]
+    # Filter out any pass statements
+    calls = filter(None, p[3])
+    p[0] = calls
 
 
 #------------------------------------------------------------------------------
 # Enaml Calls
 #------------------------------------------------------------------------------
 def p_enaml_calls1(p):
-    ''' enaml_calls : enaml_call '''
+    ''' enaml_calls : enaml_call_or_pass '''
     p[0] = [p[1]]
 
 
 def p_enaml_calls2(p):
-    ''' enaml_calls : enaml_calls enaml_call '''
+    ''' enaml_calls : enaml_calls enaml_call_or_pass '''
     p[0] = p[1] + [p[2]]
+
+
+def p_enaml_call_or_pass1(p):
+    ''' enaml_call_or_pass : enaml_call '''
+    p[0] = p[1]
+
+
+def p_enaml_call_or_pass2(p):
+    ''' enaml_call_or_pass : PASS NEWLINE '''
+    p[0] = None
 
 
 #------------------------------------------------------------------------------

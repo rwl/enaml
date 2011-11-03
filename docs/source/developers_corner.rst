@@ -18,9 +18,6 @@ Label              Description
 ================== ============================================
 ``master``         main stable branch
 ``develop``        developing branch (unstable)
-``wx``             wxWidgets backend development
-``qt``             Qt backend development
-``parsing``        Future work for replacing the ply parser
 ================== ============================================
 
 Sphinx Source
@@ -167,7 +164,7 @@ Example
 
 ::
 
-    """Extract the fields from the docstring
+        """Extract the fields from the docstring
 
         Parse the fields into tuples of name, type and description in a
         list of strings. The strings are also removed from the list.
@@ -188,6 +185,9 @@ Example
             formats::
 
                 <name> : <type>
+
+            or::
+
                 <name> :
 
             Where the name has to be one word.
@@ -196,10 +196,10 @@ Example
         -------
         parameters : list of tuples
             list of parsed parameter tuples as returned from the
-            :meth:`~FunctionDocString.get_next_field` function.
+            :meth:`~BaseDocstring.parse_field` method.
 
         """
 
-.. currentmodule:: enamldoc
+.. currentmodule:: refactor_doc
 
 .. automethod:: FunctionDocstring.extract_fields

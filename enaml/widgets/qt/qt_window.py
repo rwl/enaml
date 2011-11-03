@@ -3,14 +3,12 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 from .qt import QtCore, QtGui
-from .qt_component import QtComponent
+from .qt_container import QtContainer
 
 from ..window import AbstractTkWindow
 
-from ...enums import Modality
 
-
-class QtWindow(QtComponent, AbstractTkWindow):
+class QtWindow(QtContainer, AbstractTkWindow):
     """ A Qt implementation of a Window.
 
     QtWindow uses a QFrame to create a simple top level window which
@@ -20,12 +18,7 @@ class QtWindow(QtComponent, AbstractTkWindow):
     #--------------------------------------------------------------------------
     # Setup methods
     #--------------------------------------------------------------------------
-    def create(self):
-        """ Creates the underlying QWindow control.
 
-        """
-        self.widget = QtGui.QFrame(self.parent_widget())
-    
     def initialize(self):
         """ Intializes the attributes on the QWindow.
 
@@ -35,21 +28,24 @@ class QtWindow(QtComponent, AbstractTkWindow):
         self.set_title(shell.title)
         self.set_modality(shell.modality)
 
-        # XXX not sure the right place for this
-        layout = QtGui.QVBoxLayout()
-        for child in self.child_widgets():
-            if isinstance(child, QtGui.QLayout):
-                layout.addLayout(child, 1)
-            else:
-                layout.addWidget(child, 1)
-        self.widget.setLayout(layout)
-
     #--------------------------------------------------------------------------
     # Implementation
     #--------------------------------------------------------------------------
+
+    def pos(self):
+        """ Returns the position of the internal toolkit widget as an 
+        (x, y) tuple of integers. The coordinates should be relative to
+        the origin of the widget's parent.
+
+        """
+        # Use the geometry member to avoid window dressing.
+        widget = self.widget
+        geom = widget.geometry()
+        return (geom.x(), geom.y())
+
     def show(self):
         """ Displays the window to the screen.
-        
+
         """
         if self.widget:
             self.widget.show()
@@ -62,37 +58,41 @@ class QtWindow(QtComponent, AbstractTkWindow):
             self.widget.hide()
 
     def shell_title_changed(self, title):
-        """ The change handler for the 'title' attribute. Not meant for 
+        """ The change handler for the 'title' attribute. Not meant for
         public consumption.
 
         """
         self.set_title(title)
-    
+
     def shell_modality_changed(self, modality):
-        """ The change handler for the 'modality' attribute. Not meant 
+        """ The change handler for the 'modality' attribute. Not meant
         for public consumption.
 
         """
         self.set_modality(modality)
 
     def set_title(self, title):
-        """ Sets the title of the QFrame. Not meant for public 
+        """ Sets the title of the QFrame. Not meant for public
         consumption.
 
         """
         if self.widget:
             self.widget.setWindowTitle(title)
-    
+
     def set_modality(self, modality):
         """ Sets the modality of the QMainWindow. Not meant for public
         consumption.
 
         """
         if self.widget:
-            if modality == Modality.APPLICATION_MODAL:
+            if modality == 'app_modal':
                 self.widget.setWindowModality(QtCore.Qt.ApplicationModal)
-            elif modality == Modality.WINDOW_MODAL:
+            elif modality == 'modal':
                 self.widget.setWindowModality(QtCore.Qt.WindowModal)
-            else:
+            elif modality == 'non_modal':
                 self.widget.setWindowModality(QtCore.Qt.NonModal)
+            else:
+                msg = "Expected one of 'app_modal', 'modal', or 'non_modal'. Got %r." % (modality,)
+                raise ValueError(msg)
+
 

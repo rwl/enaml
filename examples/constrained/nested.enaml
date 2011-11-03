@@ -1,0 +1,64 @@
+# An example showing the unified layout across nested Containers.
+#
+# We have three Containers under the window, two sharing space on top and one
+# taking up the entire horizontal space on the bottom. The two on top simply
+# consist of a Label and a Field. The Container on the left is constrained to be
+# slightly larger than the other by a constant multiplier.
+#
+# The Container on the bottom contains the more complicated example from
+# constrained.enaml to demonstrate that a complicated layout works inside
+# a nested Container, too.
+#
+# FIXME: Occasionally, this example fails with a solver error stating that the
+# objective function is unbounded.
+
+
+defn LabeledField(label_text):
+    Container -> container:
+        constraints = [
+            horizontal(left, label, field, right),
+            vertical(top, label, bottom),
+            align_v_center(label, field)
+        ]
+        Label -> label:
+            text = label_text
+        Field -> field:
+            hug = ('ignore', 'strong')
+
+
+defn MainWindow:
+    Window:
+        title = "Nested Containers"
+        constraints = [
+            horizontal(left, top_left_cntr, top_right_cntr, right),
+            vertical(top, top_left_cntr, bottom_cntr, bottom),
+            horizontal(left, bottom_cntr, right),
+            align_v_center(top_left_cntr, top_right_cntr),
+            top_left_cntr.width == 1.1 * top_right_cntr.width,
+        ]
+        LabeledField("Left:") -> container as top_left_cntr:
+            pass
+        LabeledField("Right:") -> container as top_right_cntr:
+            pass
+        Container -> bottom_cntr:
+            constraints = [
+                vertical(top, frame, add_button, bottom),
+                horizontal(left, frame, right),
+                horizontal(left, add_button, remove_button, _space_, change_mode_button, _space_, share_button, right),
+                align_v_center(add_button, remove_button, change_mode_button, share_button),
+                align_h_center(self, change_mode_button) | 'weak',
+                frame.height >= 100,
+                frame.width >= 200,
+            ]
+            PushButton -> frame:
+                text = 'Frame'
+                hug = ('ignore', 'ignore')
+            PushButton -> add_button:
+                text = 'Add'
+            PushButton -> remove_button:
+                text = 'Remove'
+            PushButton -> change_mode_button:
+                text = 'Change Mode'
+            PushButton -> share_button:
+                text = 'Share...'
+

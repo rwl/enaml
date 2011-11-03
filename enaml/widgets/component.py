@@ -4,13 +4,10 @@
 #------------------------------------------------------------------------------
 from abc import abstractmethod, abstractproperty
 
-from traits.api import Instance, List, Property
+from traits.api import Instance, Property, Tuple, Event
 
 from .base_component import BaseComponent, AbstractTkBaseComponent
 from .layout.box_model import BoxModel
-from .layout.symbolics import LinearConstraint
-from .layout.layout_manager import AbstractLayoutManager
-from .layout.constraints_layout import ConstraintsLayout
 
 
 class AbstractTkComponent(AbstractTkBaseComponent):
@@ -55,6 +52,14 @@ class AbstractTkComponent(AbstractTkBaseComponent):
         """
         raise NotImplementedError
     
+    @abstractmethod
+    def set_min_size(self, min_width, min_height):
+        """ Set the hard minimum width and height of the widget. A widget
+        should not be able to be resized smaller than this value.
+
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def pos(self):
         """ Returns the position of the internal toolkit widget as an 
@@ -102,12 +107,23 @@ class Component(BaseComponent):
     #: for this component. 
     _box_model = Instance(BoxModel, ())
 
-    #: An object that manages the layout of this component and its 
-    #: direct children. The default is simple constraints based
-    layout = Instance(AbstractLayoutManager, factory=ConstraintsLayout)
+    #: How strongly a component hugs it's content. Valid strengths
+    #: are 'weak', 'medium', 'strong', 'required' and 'ignore'. 
+    #: The default is 'strong' for both width and height. This
+    #: trait should be overridden on a per-control basis to specify
+    #: a logical default for the given control.
+    hug = Tuple('strong', 'strong')
 
-    #: A list of linear constraints defined for this object.
-    constraints = List(Instance(LinearConstraint))
+    #: How strongly a component resists clipping its contents. 
+    #: Valid strengths are 'weak', 'medium', 'strong', 'required'
+    #: and 'ignore'. The default is 'strong' for both width and 
+    #: height. This trait should be overridden on a per-control basis 
+    #: to specify a logical default for the given control.
+    compress = Tuple('strong', 'strong')
+
+    #: An event that should be emitted by the abstract obj when
+    #: its size hint has updated do to some change.
+    size_hint_updated = Event
 
     #: A read-only symbolic object that represents the left 
     #: boundary of the component
@@ -195,7 +211,7 @@ class Component(BaseComponent):
 
         """
         return self._box_model.h_center
-    
+
     def size(self):
         """ Returns the size tuple as given by the abstract widget.
 
@@ -216,6 +232,13 @@ class Component(BaseComponent):
         """
         self.abstract_obj.resize(width, height)
     
+    def set_min_size(self, min_width, min_height):
+        """ Set the hard minimum width and height of the widget. A widget
+        should not be able to be resized smaller than this value.
+
+        """
+        self.abstract_obj.set_min_size(min_width, min_height)
+
     def pos(self):
         """ Returns the position tuple as given by the abstract widget.
 
@@ -248,45 +271,4 @@ class Component(BaseComponent):
 
         """
         return self.abstract_obj.toolkit_widget
-
-    def update_contraints_if_needed(self):
-        """ Update the constraints of this component if necessary. This 
-        is typically the case when a constraint has been changed.
-
-        """
-        self.layout.update_constraints_if_needed()
-
-    def set_needs_update_constraints(self):
-        """ Indicate that the constraints for this component should be
-        updated some time later.
-
-        """
-        self.layout.set_needs_update_constraints()
-
-    def update_constraints(self):
-        """ Update the constraints for this component.
-
-        """
-        self.layout.update_constraints()
-    
-    def layout_if_needed(self):
-        """ Refreshes the layout of this component if necessary. This 
-        will typically be needed if this component has been resized or 
-        the sizes of any of its children have been changed.
-
-        """
-        self.layout.layout_if_needed()
-
-    def set_needs_layout(self):
-        """ Indicate that the layout should be refreshed some time 
-        later.
-
-        """
-        self.layout.set_needs_layout()
-        
-    def do_layout(self):
-        """ Updates the layout of this component.
-
-        """
-        self.layout.layout()
 
