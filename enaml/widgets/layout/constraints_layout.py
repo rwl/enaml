@@ -135,6 +135,7 @@ class ConstraintsLayout(AbstractLayoutManager):
         the geometry of all of the component's children.
 
         """
+        print 'layout!'
         if self._recursion_guard or not self._initialized:
             return
         self._recursion_guard = True

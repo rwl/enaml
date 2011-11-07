@@ -35,14 +35,14 @@ class CocoaLabel(CocoaControl, AbstractTkLabel):
         
         self.set_label(self.shell_obj.text)
     
-    def size_hint(self):
-        """ Returns a (width, height) tuple of integers which represent
-        the suggested size of the widget for its current state. This 
-        value is used by the layout manager to determine how much 
-        space to allocate the widget.
+    #def size_hint(self):
+    #    """ Returns a (width, height) tuple of integers which represent
+    #    the suggested size of the widget for its current state. This 
+    #    value is used by the layout manager to determine how much 
+    #    space to allocate the widget.
 
-        """
-        return (100, 100)
+    #    """
+    #    return (100, 100)
 
     #--------------------------------------------------------------------------
     # Implementation

@@ -41,11 +41,12 @@ def constructor(base_path):
 COCOA_CONSTRUCTORS = dict((
     constructor('window'),
     constructor('component'),
+    constructor('container'),
     #constructor('dialog'),
     #constructor('calendar'),
     #constructor('check_box'),
     #constructor('combo_box'),
-    #constructor('field'),
+    constructor('field'),
     #constructor('html'),
     #constructor('image'),
     constructor('label'),

@@ -5,7 +5,7 @@ from AppKit import NSWindow, NSView, \
 
 from traits.api import implements, Instance
 
-from .cocoa_component import CocoaComponent
+from .cocoa_container import CocoaContainer
 
 from ..window import AbstractTkWindow
 
@@ -14,7 +14,7 @@ from ...enums import Modality
 from ...util.guisupport import get_app_cocoa
 
 
-class CocoaWindow(CocoaComponent, AbstractTkWindow):
+class CocoaWindow(CocoaContainer, AbstractTkWindow):
     """ A Cocoa implementation of a Window.
 
     CocoaWindow uses a QFrame to create a simple top level window which

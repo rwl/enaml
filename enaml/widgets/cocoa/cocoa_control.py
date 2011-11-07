@@ -6,4 +6,14 @@ from ..control import AbstractTkControl
 
 
 class CocoaControl(CocoaComponent, AbstractTkControl):
-    pass
+
+    def size_hint(self):
+        """ Returns a (width, height) tuple of integers which represent
+        the suggested size of the widget for its current state. This 
+        value is used by the layout manager to determine how much 
+        space to allocate the widget.
+
+        """
+        width, height = self.widget.cell().cellSize()
+        print self, width, height
+        return (width, height)

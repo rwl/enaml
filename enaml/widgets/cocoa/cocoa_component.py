@@ -2,10 +2,12 @@ from .cocoa_base_component import CocoaBaseComponent
 
 from ..component import AbstractTkComponent
 
-from Foundation import NSMakeRect
+from Foundation import NSMakeRect, NSObject
 from AppKit import NSView, NSViewWidthSizable, NSViewHeightSizable
 
-
+class ComponentDelegate(NSObject):
+    pass
+    
 class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
     """ A Cocoa implementation of Component.
 
@@ -16,6 +18,8 @@ class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
     """
     #: The Cocoa widget created by the component
     widget = None
+    
+    delegate_class = ComponentDelegate
 
     #--------------------------------------------------------------------------
     # Setup Methods
@@ -30,10 +34,9 @@ class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
     
     def bind(self):
         super(CocoaComponent, self).bind()
-        
-        # This is a hack at the moment
-        if hasattr(self.widget, 'resized'):
-            self.widget.resized.connect(self.on_resize)
+        self.delegate = self.delegate_class.alloc().init()
+        self.delegate.component = self
+        self.widget.setDelegate_(self.delegate)
 
     #--------------------------------------------------------------------------
     # Implementation
@@ -61,7 +64,9 @@ class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
         space to allocate the widget.
 
         """
-        return (400, 400)
+        width, height = (600, 400) #self.widget.intrinsicContentSize
+        print self, width, height
+        return (width, height)
 
     def resize(self, width, height):
         """ Resizes the internal toolkit widget according the given
@@ -76,6 +81,7 @@ class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
         should not be able to be resized smaller than this value.
 
         """
+        print 'setting min size to', min_width, min_height, self
         pass
     
     def pos(self):

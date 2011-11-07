@@ -1,6 +1,8 @@
 
 defn MainWindow(model):
     Window:
-        title = model.window_title
+        title << model.window_title
         Label:
             text = model.message
+        Field:
+            value := model.window_title
