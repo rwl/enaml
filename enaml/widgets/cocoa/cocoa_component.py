@@ -68,7 +68,15 @@ class CocoaComponent(CocoaBaseComponent, AbstractTkComponent):
         width and height integers.
 
         """
-        self.widget.setFrameSize_(width, height)
+        pass
+        #self.widget.setFrameSize_(width, height)
+    
+    def set_min_size(self, min_width, min_height):
+        """ Set the hard minimum width and height of the widget. A widget
+        should not be able to be resized smaller than this value.
+
+        """
+        pass
     
     def pos(self):
         """ Returns the position of the internal toolkit widget as an 
