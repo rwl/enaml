@@ -1,6 +1,10 @@
 # Form layouts
 #
-# Note that the midline is shared between both Form containers.
+# Note:
+# - the midline is shared between both Form containers.
+# - (currently) the hug parameters for the label and field need to be set
+#   as in the example
+
 
 defn MainWindow:
     Window:
@@ -18,29 +22,24 @@ defn MainWindow:
         Form -> top_form:
             Label:
                 text = "First name:"
-                hug = ('weak', 'strong')
             Field:
-                hug = ('ignore', 'strong')
+                pass
             Label:
                 text = "Last name:"
-                hug = ('weak', 'strong')
             Field:
-                hug = ('ignore', 'strong')
+                pass
             Label:
                 text = "Home phone:"
-                hug = ('weak', 'strong')
             Field:
-                hug = ('ignore', 'strong')
+                pass
         Label -> bottom_label:
             text = "Employment Details"
         Form -> bottom_form:
             Label:
                 text = "Employer:"
-                hug = ('weak', 'strong')
             Field:
-                hug = ('ignore', 'strong')
+                pass
             Label:
-                text = "Work phone:"
-                hug = ('weak', 'strong')
+                text = "Office or Desk phone:"
             Field:
-                hug = ('ignore', 'strong')
+                pass
