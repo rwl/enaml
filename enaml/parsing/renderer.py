@@ -28,7 +28,18 @@ def extract_operator(symbol):
             text = text.replace(value, key)
         return text
     return symbol
-    
+
+def render_docstring(code, doc):
+    """ Attempt to render docstrings triple-quotedly.
+    Imperfect, but good enough for now. """
+    lines = doc.split('\n')
+    code.write_i('"""')
+    # write the representation of the line, less outer quotes, with triple quotes escaped
+    escaped = [repr(line)[1:-1].replace('"""', '\\"\\"\\"')
+        for line in lines]
+    code.write('\n'.join(escaped))
+    code.write('"""')
+    code.newline()
 
 class Code(object):
 
@@ -98,6 +109,8 @@ class ASTRenderer(object):
     # enaml_ast Handlers
     #--------------------------------------------------------------------------
     def visit_EnamlModule(self, enaml_module):
+        if enaml_module.doc:
+            render_docstring(self.code, enaml_module.doc)
         for stmt in enaml_module.body:
             self.visit(stmt)
             self.code.newline()
@@ -124,6 +137,8 @@ class ASTRenderer(object):
         self.code.newline()
         
         self.code.indent()
+        if enaml_defn.doc:
+            render_docstring(self.code, enaml_defn.doc)
         if enaml_defn.body:
             for stmt in enaml_defn.body:
                 self.visit(stmt)

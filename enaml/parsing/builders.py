@@ -30,8 +30,9 @@ def get_expr(code):
 class EnamlPyDefn(object):
     """ Base class for the Enaml Python API defn AST builders
     """
-    def __init__(self, name, args=None, defaults=None, body=None):
+    def __init__(self, name, args=None, defaults=None, doc='', body=None):
         self.name = name
+        self.doc = doc
         self.body = body if body is not None else []
         self.args = args if args is not None else []
         self.defaults = defaults if defaults is not None else []
@@ -39,7 +40,7 @@ class EnamlPyDefn(object):
     def ast(self):
         defaults = [get_expr(expr) for expr in self.defaults]
         parameters = enaml_ast.EnamlParameters(self.args, defaults)
-        return enaml_ast.EnamlDefine(self.name, parameters,
+        return enaml_ast.EnamlDefine(self.name, parameters, self.doc,
             [body_item.ast() for body_item in self.body])
 
     def compile(self, global_ns):
