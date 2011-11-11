@@ -2,8 +2,17 @@
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
+from unittest import expectedFailure
+from enaml.widgets.qt.qt import QtGui
 from .qt_test_assistant import QtTestAssistant
 from .. import field
+
+QT_2_ENAML_PASSWORD_MODES = {
+    QtGui.QLineEdit.Normal: 'normal',
+    QtGui.QLineEdit.Password: 'password',
+    QtGui.QLineEdit.NoEcho: 'silent',
+}
+
 
 class TestQtField(QtTestAssistant, field.TestField):
     """ QtField tests. """
@@ -50,8 +59,23 @@ class TestQtField(QtTestAssistant, field.TestField):
         """
         return widget.selectedText()
 
+    def get_password_mode(self, widget):
+        """ Get the password mode status of the widget
+
+        """
+        mode = widget.echoMode()
+        return QT_2_ENAML_PASSWORD_MODES[mode]
+
     def press_return(self, widget):
         """ Simulate a press of the 'Return' key.
 
         """
         widget.returnPressed.emit()
+
+    @expectedFailure
+    def test_max_length(self):
+        """ Check that the field enforces its maximum length.
+
+        This is known to fail on Qt.
+        """
+        super(TestQtField, self).test_max_length()

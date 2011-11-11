@@ -93,8 +93,14 @@ def p_enaml1(p):
 
 
 def p_enaml2(p):
-    ''' enaml : NEWLINE ENDMARKER '''
+    ''' enaml : NEWLINE ENDMARKER
+              | ENDMARKER '''
     p[0] = enaml_ast.EnamlModule('', [])
+
+
+def p_enaml3(p):
+    ''' enaml : STRING NEWLINE ENDMARKER '''
+    p[0] = enaml_ast.EnamlModule(p[1], [])
 
 
 def p_enaml_module1(p):
@@ -830,7 +836,7 @@ def p_or_test_list1(p):
 
 def p_or_test_list2(p):
     ''' or_test_list : or_test_list OR and_test '''
-    p[0] = p[1] + [p[2]]
+    p[0] = p[1] + [p[3]]
 
 
 def p_and_test1(p):
@@ -852,7 +858,7 @@ def p_and_test_list1(p):
 
 def p_and_test_list2(p):
     ''' and_test_list : and_test_list AND not_test '''
-    p[0] = p[1] + [p[2]]
+    p[0] = p[1] + [p[3]]
 
 
 def p_not_test(p):
