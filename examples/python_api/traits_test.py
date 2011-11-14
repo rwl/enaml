@@ -9,6 +9,7 @@ from enaml.traits_view import configure_traits
 class Person(HasTraits):
     first_name = Str
     last_name = Str
+    age = Int
     
     #full_name = Property(Str, depends_on=['first_name', 'last_name'])
     

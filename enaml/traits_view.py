@@ -9,10 +9,41 @@ from .parsing.builders import EnamlPyCall, simple, delegate, enaml_defn, make_wi
 
 _widget_factories = {}
 
+def monkeypatch_traits_metadata():
+    from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat, BaseComplex,
+        BaseStr, BaseUnicode, String, Code, HTML, Password, BaseFile,
+        BaseDirectory, BaseRange)
+    
+    def safe_update(trait_type, control):
+        metadata = trait_type.metadata.copy()
+        metadata['enaml_control'] = control
+        trait_type.metadata = metadata
+    
+    safe_update(BaseBool, 'CheckBox')
+    safe_update(BaseInt, 'IntField')
+    safe_update(BaseLong, 'LongField')
+    safe_update(BaseFloat, 'FloatField')
+    safe_update(BaseComplex, 'ComplexField')
+    safe_update(BaseStr, 'Field')
+    safe_update(BaseUnicode, 'Field')
+    safe_update(String, 'Field')
+    safe_update(Code, 'CodeEditor')
+    safe_update(HTML, 'Html')
+    safe_update(Password, 'PasswordField')
+    #safe_update(BaseFile, 'FileField')
+    #safe_update(BaseDirectory, 'DirectoryField')
+    #safe_update(BaseRange, 'Range')
+
+def get_control(trait):
+    trait_type = trait.trait_type
+    if 'enaml_control' in trait_type.metadata:
+        control_name = trait_type.metadata['enaml_control']
+        factory = _widget_factories.setdefault(control_name, make_widget('control_name'))
+    else:
+        factory = _widget_factories.setdefault('Label', make_widget('Label'))
+
 class TraitsItem(HasTraits):
-    control_class = Str("Field")
-    control = Property(Any, depends_on=['_control', 'control_class'])
-    _control = Any
+    control = Any
     name = Str
     label = Str
     label_class = Any
@@ -22,10 +53,16 @@ class TraitsItem(HasTraits):
             self.label_class(
                 simple('text', repr(self.label))
             ),
-            self.control(
+            self.get_control(model)(
                 delegate('value', 'model.'+self.name)
             )
         ]
+
+    def get_control(self, model):
+        if self.control is not None:
+            return self.control
+        else:
+            get_control(model.traits()[self.name])
 
     @cached_property
     def _get_control(self):
