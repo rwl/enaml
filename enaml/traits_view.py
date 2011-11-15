@@ -5,6 +5,10 @@
 
 from traits.api import HasTraits, Str, Any, List, Either, Instance, Property, cached_property
 
+import enaml
+with enaml.imports():
+    from enaml.stdlib.fields import *
+
 from .parsing.builders import EnamlPyCall, simple, delegate, enaml_defn, make_widget
 
 _widget_factories = {}
@@ -21,6 +25,7 @@ def monkeypatch_traits_metadata():
     
     safe_update(BaseBool, 'CheckBox')
     safe_update(BaseInt, 'IntField')
+    safe_update(BaseInt, 'IntField')
     safe_update(BaseLong, 'LongField')
     safe_update(BaseFloat, 'FloatField')
     safe_update(BaseComplex, 'ComplexField')
@@ -34,13 +39,19 @@ def monkeypatch_traits_metadata():
     #safe_update(BaseDirectory, 'DirectoryField')
     #safe_update(BaseRange, 'Range')
 
+monkeypatch_traits_metadata()
+
 def get_control(trait):
-    trait_type = trait.trait_type
-    if 'enaml_control' in trait_type.metadata:
-        control_name = trait_type.metadata['enaml_control']
-        factory = _widget_factories.setdefault(control_name, make_widget('control_name'))
+    control = trait.enaml_control
+    if control is None:
+        control = 'Label'
+    print control
+    if isinstance(control, basestring):
+        factory = _widget_factories.setdefault(control, make_widget(control))
+        print factory
+        return factory
     else:
-        factory = _widget_factories.setdefault('Label', make_widget('Label'))
+        return control()
 
 class TraitsItem(HasTraits):
     control = Any
@@ -49,20 +60,16 @@ class TraitsItem(HasTraits):
     label_class = Any
 
     def build(self, model):
-        return [
-            self.label_class(
-                simple('text', repr(self.label))
-            ),
-            self.get_control(model)(
-                delegate('value', 'model.'+self.name)
-            )
-        ]
+        print self.name
+        label = self.label_class(simple('text', repr(self.label)))
+        control = self.get_control(model)(delegate('value', 'model.'+self.name))
+        return [label, control]
 
     def get_control(self, model):
         if self.control is not None:
             return self.control
         else:
-            get_control(model.traits()[self.name])
+            return get_control(model.traits()[self.name])
 
     @cached_property
     def _get_control(self):
