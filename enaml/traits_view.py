@@ -13,7 +13,35 @@ from .parsing.builders import EnamlPyCall, simple, delegate, enaml_defn, make_wi
 
 _widget_factories = {}
 
+class TraitControlRegistry(HasTraits):
+    
+    #registry = Dict
+    
+    def get_control(self, trait, name):
+        """ Return an appropriate Enaml control for a given CTrait
+        """
+        # check 'enaml_control' metadata
+        control = trait.enaml_control
+        
+        # otherwise search mro for something in the registry
+        if control is None:
+            for trait_type in trait.trait_type.__class__.mro():
+                if trait_type in self.registry:
+                    control = self.registry[trait_type]
+                    break
+            else:
+                control = 'ReadOnlyField'
+        
+        
+
 def monkeypatch_traits_metadata():
+    """ Monkeypatch Traits metadata for enaml
+    
+    This function updates the metadata attribute to add an 'enaml_control'
+    item that should contain either a string with an EnamlControl name or
+    a callable which should expect the CTrait instance and the name of the
+    trait as arguments.
+    """
     from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat, BaseComplex,
         BaseStr, BaseUnicode, String, Code, HTML, Password, BaseFile,
         BaseDirectory, BaseRange)
@@ -41,15 +69,16 @@ def monkeypatch_traits_metadata():
 
 monkeypatch_traits_metadata()
 
-def get_control(trait):
+def get_control(trait, name):
     control = trait.enaml_control
     if control is None:
         control = 'Label'
     print control
     if isinstance(control, basestring):
         factory = _widget_factories.setdefault(control, make_widget(control))
-        print factory
         return factory
+    elif callable(control):
+        return control(trait, name)
     else:
         return control()
 
@@ -69,18 +98,7 @@ class TraitsItem(HasTraits):
         if self.control is not None:
             return self.control
         else:
-            return get_control(model.traits()[self.name])
-
-    @cached_property
-    def _get_control(self):
-        if self._control is not None:
-            return self._control
-        else:
-            return _widget_factories.setdefault(self.control_class,
-                make_widget(self.control_class))
-    
-    def _set_control(self, value):
-        self._control = value
+            return get_control(model.traits()[self.name], self.name)
     
     def _label_default(self):
         return self.name.replace('_', ' ').capitalize()+':'
@@ -140,9 +158,7 @@ class TraitsView(HasTraits):
 def build(model, view=None):
     if view is None:
         items = [TraitsItem(name=trait) for trait in sorted(model.trait_names())
-                if trait != 'trait_added' and trait != 'trait_modified']
-        print [trait for trait in sorted(model.trait_names())
-                if trait != 'trait_added' and trait != 'trait_modified']
+                if trait[0] != '_' and trait != 'trait_added' and trait != 'trait_modified']
         form = TraitsGroup(items=items)
         view = TraitsView(items=[form])
     return view.build(model)
