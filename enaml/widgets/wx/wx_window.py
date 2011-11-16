@@ -1,12 +1,13 @@
-# -*- coding: UTF-8 -*-
 #------------------------------------------------------------------------------
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
 import wx
+
 from .wx_container import WXContainer
-from .wx_component import WXComponent
+
 from ..window import AbstractTkWindow
+
 
 class WXWindow(WXContainer, AbstractTkWindow):
     """ A wxPython implementation of a Window.
@@ -24,13 +25,11 @@ class WXWindow(WXContainer, AbstractTkWindow):
         """ Creates the underlying wx.Frame control.
 
         """
-        style = (wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX | wx.RESIZE_BORDER |
-                wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX)
         # FIXME: this is an ugly hack since the wx.Frame does not show
         # well. It is advised in the wxWidget documentation to add a
         # Panel or Window control before adding the children.
-        self._frame = wx.Frame(self.parent_widget(), style=style)
-        self.widget = wx.Window(self._frame)
+        self._frame = wx.Frame(self.parent_widget())
+        self.widget = wx.Panel(self._frame)
 
     def initialize(self):
         """ Intializes the attributes on the wx.Frame.
@@ -39,7 +38,6 @@ class WXWindow(WXContainer, AbstractTkWindow):
         super(WXWindow, self).initialize()
         shell = self.shell_obj
         self.set_title(shell.title)
-        self.set_modality(shell.modality)
 
     #--------------------------------------------------------------------------
     # Implementation
@@ -62,43 +60,58 @@ class WXWindow(WXContainer, AbstractTkWindow):
         """
         self.set_title(title)
 
-    def shell_modality_changed(self, modality):
-        """ The change handler for the 'modality' attribute.
-        """
-        self.set_modality(modality)
-
     def set_title(self, title):
         """ Sets the title of the frame.
 
         """
         self._frame.SetTitle(title)
-
-    def set_modality(self, modality):
-        """ Sets the modality of the frame.
-
-        """
-        # FIXME: The wx frame cannot distinguish between application and
-        # window modal.
-        if modality in ('application_modal', 'window_modal'):
-            self._frame.MakeModal(True)
-        else:
-            self._frame.MakeModal(False)
-
-    def on_resize(self, event):
-        """ Respond to a resize event.
-
-        The method makes sure that after re-layout all the widgets are
-        visible.
+    
+    def resize(self, width, height):
+        """ Overridden parent class method to do the resize on the 
+        internal wx.Frame object.
 
         """
-        super(WXWindow, self).on_resize(event)
-        self._frame.Fit()
+        self._resize(self._frame, width, height)
+    
+    def set_min_size(self, min_width, min_height):
+        """ Overridden parent class method to set the min size on the
+        internal wx.Frame object.
 
-    def size_hint(self):
-        """ Return the sizehint for the WXWindow;
-
-        Window is a top level container and should return a resonable size
-        hint. Thus the WXComponent is used here to override the generic
-        behaviour of WXContainers.
         """
-        super(WXContainer, self).size_hint()
+        self._set_min_size(self._frame, min_width, min_height)
+        
+    def pos(self):
+        """ Overridden parent class method to get the position of
+        the internal wx.Frame object.
+
+        """
+        return self._pos(self._frame)
+
+    def move(self, x, y):
+        """ Overridden parent class method to do the move on the internal
+        wx.Frame object.
+
+        """
+        self._move(self._frame, x, y)
+        
+    def frame_geometry(self):
+        """ Overridden parent class method to get the frame geometry
+        of the internal wx.Frame object.
+
+        """
+        return self._frame_geometry(self._frame)
+
+    def geometry(self):
+        """ Overridden parent class method to get the geometry
+        of the internal wx.Frame object.
+
+        """
+        return self._geometry(self._frame)
+    
+    def set_geometry(self, x, y, width, height):
+        """ Overridden parent class method to set the geometry
+        of the internal wx.Frame object.
+
+        """
+        self._set_geometry(self._frame, x, y, width, height)
+

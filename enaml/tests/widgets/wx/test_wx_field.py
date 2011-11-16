@@ -2,11 +2,13 @@
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
-import wx
 from unittest import expectedFailure
+import warnings
+import wx
 from .wx_test_assistant import WXTestAssistant, skip_nonwindows
 from .. import field
 
+warnings.simplefilter('ignore')
 
 @skip_nonwindows
 class TestWxField(WXTestAssistant, field.TestField):

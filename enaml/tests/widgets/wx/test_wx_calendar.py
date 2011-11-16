@@ -2,10 +2,10 @@
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
+from unittest import expectedFailure
 import wx.calendar
-
-from .wx_test_assistant import WXTestAssistant, skip_nonwindows
-from .. import calendar
+from enaml.tests.widgets.wx.wx_test_assistant import WXTestAssistant, skip_nonwindows
+from enaml.tests.widgets import calendar
 
 
 @skip_nonwindows
