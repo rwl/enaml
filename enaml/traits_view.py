@@ -44,23 +44,7 @@ class TraitControlRegistry(HasTraits):
             control = control(trait, name)
         
         return control
-    
-    def get_binding(self, trait):
-        """ Determine whether the trait is read-only to decide if we should
-        use delegation or binding.
-        
-        """
-        '''if trait.type == 'property':
-            getter, setter, validate = trait.property()
-            if setter == _read_only or setter == _undefined_set:
-                return bind
-            elif getter == _write_only or getter == _undefined_get:
-                return notify
-        elif trait.type == 'constant':
-            return simple
-        '''
-        return delegate
-
+ 
                 
     def _registry_default(self):
         """ A default set of choices for Controls to use with different trait types
@@ -99,7 +83,7 @@ class TraitsItem(HasTraits):
         binding = self.get_binding(trait)
         control = self.get_control(trait)(
             self.binding('value', 'model.'+self.name),
-            #simple('read_only', str(not self.isWriteable(trait))),
+            simple('read_only', str(not self.isWriteable(trait))),
         )
         return [label, control]
 
@@ -108,12 +92,6 @@ class TraitsItem(HasTraits):
             return self.control
         else:
             return self.registry.get_control(trait, self.name)
-    
-    def get_binding(self, trait):
-        if self.binding is not None:
-            return self.binding
-        else:
-            return self.registry.get_binding(trait)
     
     def isWriteable(self, trait):
         """ Utility method to determine whether trait is writeable

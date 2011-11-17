@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 
 from traits.api import HasTraits, Str, CInt, Password, Property, cached_property
-from enaml.traits_view import configure_traits
+from enaml.traits_view import configure_traits, bind
 
 class Person(HasTraits):
     first_name = Str
@@ -12,7 +12,7 @@ class Person(HasTraits):
     age = CInt(enaml_control='ErrorField')
     password = Password
     
-    full_name = Property(Str, depends_on=['first_name', 'last_name'], enaml_control='ErrorField')
+    full_name = Property(Str, depends_on=['first_name', 'last_name'], binding=bind)
     
     @cached_property
     def _get_full_name(self):
