@@ -3,13 +3,14 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 
-from traits.api import HasTraits, Str, Int, Property, cached_property
+from traits.api import HasTraits, Str, CInt, Password, Property, cached_property
 from enaml.traits_view import configure_traits
 
 class Person(HasTraits):
     first_name = Str
     last_name = Str
-    age = Int(enaml_control='SpinBox')
+    age = CInt(enaml_control='ErrorField')
+    password = Password
     
     full_name = Property(Str, depends_on=['first_name', 'last_name'], enaml_control='ErrorField')
     

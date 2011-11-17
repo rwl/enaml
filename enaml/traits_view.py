@@ -50,7 +50,7 @@ class TraitControlRegistry(HasTraits):
         use delegation or binding.
         
         """
-        if trait.type == 'property':
+        '''if trait.type == 'property':
             getter, setter, validate = trait.property()
             if setter == _read_only or setter == _undefined_set:
                 return bind
@@ -58,7 +58,7 @@ class TraitControlRegistry(HasTraits):
                 return notify
         elif trait.type == 'constant':
             return simple
-        
+        '''
         return delegate
 
                 
@@ -86,7 +86,7 @@ default_registry = TraitControlRegistry()
 
 class TraitsItem(HasTraits):
     control = Any
-    binding = Any
+    binding = Any(delegate)
     name = Str
     label = Str
     label_class = Any
@@ -97,7 +97,10 @@ class TraitsItem(HasTraits):
         trait = model.traits()[self.name]
         label = self.label_class(simple('text', repr(self.label)))
         binding = self.get_binding(trait)
-        control = self.get_control(trait)(binding('value', 'model.'+self.name))
+        control = self.get_control(trait)(
+            self.binding('value', 'model.'+self.name),
+            #simple('read_only', str(not self.isWriteable(trait))),
+        )
         return [label, control]
 
     def get_control(self, trait):
@@ -111,6 +114,29 @@ class TraitsItem(HasTraits):
             return self.binding
         else:
             return self.registry.get_binding(trait)
+    
+    def isWriteable(self, trait):
+        """ Utility method to determine whether trait is writeable
+        """
+        if trait.type == 'property':
+            getter, setter, validate = trait.property()
+            return setter != _read_only and setter != _undefined_set
+        elif trait.type == 'constant':
+            return False
+        
+        return True
+
+        
+    def isReadable(self, trait):
+        """ Utility method to determine whether trait is readable
+        """
+        if trait.type == 'property':
+            getter, setter, validate = trait.property()
+            return getter != _write_only and setter != _undefined_get
+        elif trait.type == 'constant':
+            return False
+        
+        return True
     
     def _label_default(self):
         return self.name.replace('_', ' ').capitalize()+':'
