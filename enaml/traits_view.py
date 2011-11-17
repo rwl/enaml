@@ -3,22 +3,26 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 
-from traits.api import HasTraits, Str, Any, List, Either, Instance, Property, cached_property
+from traits.api import HasTraits, Str, Any, Dict, List, Either, Instance, Property, cached_property
+from traits.trait_handlers import _read_only, _write_only, _undefined_get, _undefined_set
 
 import enaml
 with enaml.imports():
     from enaml.stdlib.fields import *
 
-from .parsing.builders import EnamlPyCall, simple, delegate, enaml_defn, make_widget
+from .parsing.builders import EnamlPyCall, simple, bind, delegate, notify, enaml_defn, make_widget
 
 _widget_factories = {}
 
 class TraitControlRegistry(HasTraits):
     
-    #registry = Dict
+    registry = Dict
+    
+    widget_factories = Dict
     
     def get_control(self, trait, name):
-        """ Return an appropriate Enaml control for a given CTrait
+        """ Return an appropriate Enaml control for a given CTrait.
+        
         """
         # check 'enaml_control' metadata
         control = trait.enaml_control
@@ -32,79 +36,91 @@ class TraitControlRegistry(HasTraits):
             else:
                 control = 'ReadOnlyField'
         
+        if isinstance(control, basestring):
+            if control not in self.widget_factories:
+                self.widget_factories[control] = make_widget(control)
+            control = self.widget_factories[control]
+        elif callable(control):
+            control = control(trait, name)
         
-
-def monkeypatch_traits_metadata():
-    """ Monkeypatch Traits metadata for enaml
+        return control
     
-    This function updates the metadata attribute to add an 'enaml_control'
-    item that should contain either a string with an EnamlControl name or
-    a callable which should expect the CTrait instance and the name of the
-    trait as arguments.
-    """
-    from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat, BaseComplex,
-        BaseStr, BaseUnicode, String, Code, HTML, Password, BaseFile,
-        BaseDirectory, BaseRange)
-    
-    def safe_update(trait_type, control):
-        metadata = trait_type.metadata.copy()
-        metadata['enaml_control'] = control
-        trait_type.metadata = metadata
-    
-    safe_update(BaseBool, 'CheckBox')
-    safe_update(BaseInt, 'IntField')
-    safe_update(BaseInt, 'IntField')
-    safe_update(BaseLong, 'LongField')
-    safe_update(BaseFloat, 'FloatField')
-    safe_update(BaseComplex, 'ComplexField')
-    safe_update(BaseStr, 'Field')
-    safe_update(BaseUnicode, 'Field')
-    safe_update(String, 'Field')
-    safe_update(Code, 'CodeEditor')
-    safe_update(HTML, 'Html')
-    safe_update(Password, 'PasswordField')
-    #safe_update(BaseFile, 'FileField')
-    #safe_update(BaseDirectory, 'DirectoryField')
-    #safe_update(BaseRange, 'Range')
+    def get_binding(self, trait):
+        """ Determine whether the trait is read-only to decide if we should
+        use delegation or binding.
+        
+        """
+        if trait.type == 'property':
+            getter, setter, validate = trait.property()
+            if setter == _read_only or setter == _undefined_set:
+                return bind
+            elif getter == _write_only or getter == _undefined_get:
+                return notify
+        elif trait.type == 'constant':
+            return simple
+        
+        return delegate
 
-monkeypatch_traits_metadata()
+                
+    def _registry_default(self):
+        """ A default set of choices for Controls to use with different trait types
+        
+        """
+        from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat,
+                BaseComplex, BaseStr, BaseUnicode, String, Code, HTML, Password)
+        return {
+            BaseBool: 'CheckBox',
+            BaseInt: 'IntField',
+            BaseLong: 'LongField',    
+            BaseFloat: 'FloatField',
+            BaseComplex: 'ComplexField',
+            BaseStr: 'ErrorField',
+            BaseUnicode: 'ErrorField',
+            String: 'ErrorField',
+            Code: 'CodeEditor',
+            HTML: 'Html',
+            Password: 'PasswordField',
+        }
 
-def get_control(trait, name):
-    control = trait.enaml_control
-    if control is None:
-        control = 'Label'
-    print control
-    if isinstance(control, basestring):
-        factory = _widget_factories.setdefault(control, make_widget(control))
-        return factory
-    elif callable(control):
-        return control(trait, name)
-    else:
-        return control()
+default_registry = TraitControlRegistry()
 
 class TraitsItem(HasTraits):
     control = Any
+    binding = Any
     name = Str
     label = Str
     label_class = Any
+    registry = Instance(TraitControlRegistry)
 
     def build(self, model):
         print self.name
+        trait = model.traits()[self.name]
         label = self.label_class(simple('text', repr(self.label)))
-        control = self.get_control(model)(delegate('value', 'model.'+self.name))
+        binding = self.get_binding(trait)
+        control = self.get_control(trait)(binding('value', 'model.'+self.name))
         return [label, control]
 
-    def get_control(self, model):
+    def get_control(self, trait):
         if self.control is not None:
             return self.control
         else:
-            return get_control(model.traits()[self.name], self.name)
+            return self.registry.get_control(trait, self.name)
+    
+    def get_binding(self, trait):
+        if self.binding is not None:
+            return self.binding
+        else:
+            return self.registry.get_binding(trait)
     
     def _label_default(self):
         return self.name.replace('_', ' ').capitalize()+':'
     
     def _label_class_default(self):
         return make_widget('Label')
+    
+    def _registry_default(self):
+        return default_registry
+
 
 class TraitsGroup(HasTraits):
     container_class = Str("Form")

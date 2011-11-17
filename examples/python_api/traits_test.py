@@ -9,13 +9,13 @@ from enaml.traits_view import configure_traits
 class Person(HasTraits):
     first_name = Str
     last_name = Str
-    age = Int(enaml_control='ErrorField')
+    age = Int(enaml_control='SpinBox')
     
-    #full_name = Property(Str, depends_on=['first_name', 'last_name'])
+    full_name = Property(Str, depends_on=['first_name', 'last_name'], enaml_control='ErrorField')
     
-    #@cached_property
-    #def _get_full_name(self):
-    #    return self.first_name + ' ' + self.last_name
+    @cached_property
+    def _get_full_name(self):
+        return self.first_name + ' ' + self.last_name
 
 if __name__ == '__main__':
     person = Person(first_name='John', last_name='Citizen')

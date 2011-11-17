@@ -10,6 +10,10 @@ defn ErrorField:
         error_color = '#F9A7A7'
         bg_color << error_color if error else "none"
 
+defn ReadOnlyField:
+    ErrorField:
+        read_only = True
+
 defn IntField:
     ErrorField:
         converter = IntConverter()
