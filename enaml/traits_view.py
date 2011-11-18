@@ -80,7 +80,7 @@ class TraitsItem(HasTraits):
         print self.name
         trait = model.traits()[self.name]
         label = self.label_class(simple('text', repr(self.label)))
-        binding = self.get_binding(trait)
+        binding = self.binding
         control = self.get_control(trait)(
             self.binding('value', 'model.'+self.name),
             simple('read_only', str(not self.isWriteable(trait))),
