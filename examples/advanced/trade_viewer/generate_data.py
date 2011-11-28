@@ -83,7 +83,8 @@ def generate_data():
 
 
 if __name__ == '__main__':
-    # Uncomment and re-run to regenerate data
+    # Uncomment and run as main to regenerate data. 
+    # This will take several minutes.
     # generato_data()
     pass
 
