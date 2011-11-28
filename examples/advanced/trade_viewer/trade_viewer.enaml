@@ -1,0 +1,46 @@
+from enaml.item_models.standard_models import TableModel
+
+defn ToolBar:
+    Container:
+        constraints = [
+            hbox(book_label, book_chooser, _space_, qfield, qbutton, _space_, date_label, date_field),
+            (qfield.left - book_chooser.right) == (date_label.left - qbutton.right),
+            align('v_center', book_label, book_chooser, date_label, date_field),
+        ]
+        Label -> book_label:
+            text = 'Book'
+        ComboBox -> book_chooser:
+            pass
+        Field -> qfield:
+            placeholder_text = 'Text to query...'
+            hug_width = 'medium'
+        PushButton -> qbutton:
+            text = 'Query'
+        Label -> date_label:
+            text = 'Start Date'
+        DateEdit -> date_field:
+            hug_width = 'medium'        
+        
+defn MainWindow:
+    Window:
+        ToolBar:
+            pass
+        Tabbed -> tbd:
+            tab_position = 'bottom'
+            Tab:
+                title = 'Events'
+                TableView:
+                    vertical_header_visible = False
+                    item_model = TableModel([[i + j for i in xrange(100)] for j in xrange(100)])
+            Tab:
+                title = 'Deals'
+                TableView:
+                    vertical_header_visible = False
+                    item_model = TableModel([[i - j for i in xrange(100)] for j in xrange(100)])
+            Tab:
+                title = 'Vols'
+                TableView:
+                    vertical_header_visible = False
+                    item_model = TableModel([[i * j for i in xrange(100)] for j in xrange(100)])
+
+        
