@@ -135,6 +135,15 @@ class WXTableView(WXControl, AbstractTkTableView):
         """
         self.set_table_model(item_model)
 
+    def shell_selection_model_changed(self, selection_model):
+        self.set_selection_model(selection_model)
+
+    def shell_horizontal_header_visible_changed(self, visible):
+        self.set_horizontal_header_visible(visible)
+
+    def shell_vertical_header_visible_changed(self, visible):
+        self.set_vertical_header_visible(visible)
+        
     def on_select_cell(self, event):
         """ The event handler for the cell selection event.  Not meant
         for public consumption.
@@ -167,3 +176,11 @@ class WXTableView(WXControl, AbstractTkTableView):
         # It also takes forever and a year to compute.
         return (256, 192)
         
+    def set_horizontal_header_visible(self, visible):
+        pass
+    
+    def set_vertical_header_visible(self, visible):
+        pass
+    
+    def set_selection_model(self, visible):
+        pass
