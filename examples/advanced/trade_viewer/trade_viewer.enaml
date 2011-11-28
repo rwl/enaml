@@ -1,46 +1,206 @@
 from enaml.item_models.standard_models import TableModel
 
-defn ToolBar:
+
+defn EventsToolBar:
     Container:
         constraints = [
-            hbox(book_label, book_chooser, _space_, qfield, qbutton, _space_, date_label, date_field),
-            (qfield.left - book_chooser.right) == (date_label.left - qbutton.right),
-            align('v_center', book_label, book_chooser, date_label, date_field),
+            hbox(
+                book_label, book_chooser, start_field, to_label, end_field, 
+                _space_, 
+                ffield, fbutton, 
+                _space_, 
+                view_label, view_box, column_box,
+            ),
+            (ffield.right == h_center) | 'weak',
+            align('v_center', *children),
         ]
         Label -> book_label:
             text = 'Book'
         ComboBox -> book_chooser:
             pass
-        Field -> qfield:
-            placeholder_text = 'Text to query...'
+        DateEdit -> start_field:
             hug_width = 'medium'
-        PushButton -> qbutton:
-            text = 'Query'
-        Label -> date_label:
-            text = 'Start Date'
-        DateEdit -> date_field:
-            hug_width = 'medium'        
+        Label -> to_label:
+            text = 'to'
+        DateEdit -> end_field:
+            hug_width = 'medium'
+        Field -> ffield:
+            placeholder_text = 'Filter on...'
+            hug_width = 'medium'
+        PushButton -> fbutton:
+            text = 'Filter'
+        Label -> view_label:
+            text = 'View'
+        ComboBox -> view_box:
+            items = ['Fx', 'Energy', 'Futures']
+            value = items[0]
+        ComboBox -> column_box:
+            items = ['Everything', 'Standard', 'Minimal']
+            value = items[0]
+
+
+defn EventsTab(events_model):
+    Tab:
+        title = 'Events'
+        EventsToolBar -> book_chooser as book_box:
+            book_box.items << events_model.book_choices
+            book_box.value := events_model.book_choice
+        TableView:
+            item_model = events_model.trade_table
         
-defn MainWindow:
-    Window:
-        ToolBar:
+
+
+defn SingleReportTab:
+    Tab:
+        title = 'Single'
+
+
+defn BunchReportTab:
+    Tab:
+        title = 'Bunch'
+
+
+defn SelectionReportTab:
+    Tab:
+        title = 'Selection'
+
+
+defn OptionsBox:
+    GroupBox:
+        title = 'Options'
+        constraints = [
+            vbox(
+                hbox(*children[:3]),
+                hbox(*children[3:]),
+            ) | 'required',
+            align('v_center', *children[:3]),
+            align('v_center', *children[3:]),
+            cbb_field.left == cmnt_field.left,
+        ]
+        CheckBox -> dist_check:
+            text = 'Distribute'
+            checked = True
+        Label:
+            text = 'CBB'
+        Field -> cbb_field:
+            value = 'FX'
+            read_only = True 
+            bg_color = '#eeeeee'
+        Label:
+            text = 'Comment'
+        Field -> cmnt_field:
             pass
+
+
+defn MarketButtons:
+    PushButton:
+        text = 'Snap All'
+    PushButton:
+        text = 'Spots'
+    PushButton:
+        text = 'Fixes'
+    PushButton:
+        text = 'Vols'
+    PushButton:
+        text = 'IRVols'
+    PushButton:
+        text = 'Custom'
+    PushButton:
+        text = 'Import'
+    PushButton:
+        text = 'Close to 28Nov11'
+
+
+defn MarketDataBox:
+    GroupBox:
+        title = 'Market Data'
+        constraints = [
+            vbox(
+                hbox(close_box, terse_check, _space_),
+                hbox(*btns),
+            )
+        ]
+        ComboBox -> close_box:
+            items = ['LDN Close 28Nov11', 'LDN Open 28Nov11']
+            value = items[0]
+        CheckBox -> terse_check:
+            text = 'Terse'
+        MarketButtons -> btns:
+            pass
+
+
+defn ReportsTab:
+    Tab:
+        title = 'Reports'
+        Splitter:
+            orientation = 'vertical'
+            Tabbed:
+                SingleReportTab:
+                    pass
+                BunchReportTab:
+                    pass
+                SelectionReportTab:
+                    pass
+            Container:
+                Container:
+                    constraints = [
+                        horizontal(*([left] + children + [right])),
+                        vertical(top, opt_box, bottom),
+                        vertical(top, mkt_box, bottom),
+                        align('v_center', *children),
+                    ]
+                    PushButton:
+                        hug_width = 'strong'
+                        text = 'Run'
+                    OptionsBox -> opt_box, dist_check as vis_check, cmnt_field as cmnt_field:
+                        pass
+                    MarketDataBox -> mkt_box:
+                        visible << vis_check.checked
+                        enabled << False if cmnt_field.value == 'disable' else True
+                TableView:
+                    item_model = TableModel([[i + j for i in xrange(100)] for j in xrange(1000)])
+                    vertical_header_visible = False
+                Container:
+                    constraints = [
+                        hbox(*children),
+                        align('v_center', *children),
+                        users.width == books.width,
+                        books.width == reports.width,
+                        hours.width == 30,
+                    ]
+                    Label:
+                        text = 'Users'
+                    Field -> users:
+                        pass
+                    Label:
+                        text = 'Books'
+                    Field -> books:
+                        pass
+                    PushButton:
+                        text = 'Expand'
+                    Label:
+                        text = 'Reports'
+                    Field -> reports:
+                        pass
+                    Label:
+                        text = 'Hours'
+                    Field -> hours:
+                        value = 12
+                    PushButton:
+                        text = 'tags'
+                    CheckBox:
+                        text = 'Terse'
+
+
+
+defn MainWindow(view_model):
+    Window:
+        title = 'Trade Viewer'
         Tabbed -> tbd:
             tab_position = 'bottom'
-            Tab:
-                title = 'Events'
-                TableView:
-                    vertical_header_visible = False
-                    item_model = TableModel([[i + j for i in xrange(100)] for j in xrange(100)])
-            Tab:
-                title = 'Deals'
-                TableView:
-                    vertical_header_visible = False
-                    item_model = TableModel([[i - j for i in xrange(100)] for j in xrange(100)])
-            Tab:
-                title = 'Vols'
-                TableView:
-                    vertical_header_visible = False
-                    item_model = TableModel([[i * j for i in xrange(100)] for j in xrange(100)])
+            EventsTab(view_model.events_model):
+                pass
+            ReportsTab:
+                pass
 
         
