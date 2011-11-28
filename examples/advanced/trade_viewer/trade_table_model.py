@@ -67,22 +67,24 @@ class TradeTable(AbstractTableModel):
         return BRUSH_MAP[inst]
 
 
-LIME_GREEN = Brush(Color.from_string('limegreen'), None)
+LIME_GREEN = Brush(Color.from_string('#ccffcc'), None)
 
 
-class ReportTableModel(AbstractTableModel):
+class ReportTable(AbstractTableModel):
 
-    columns = ['Comment', 'Report', 'Priceable', 'Date', 'Last Event',
-               'Market State', 'User', 'Created', 'Updated', 'Status', 'Tag']
+    columns = [
+        'Comment', 'Report', 'Priceable', 'Date', 'Last Event',
+        'Market State', 'User', 'Created', 'Updated', 'Status', 'Tag'
+    ] * 2
 
     def column_count(self, parent=None):
-        if parent is not None:
+        if parent is None:
             return len(self.columns)
         return 0
     
     def row_count(self, parent=None):
-        if parent is not None:
-            return 100
+        if parent is None:
+            return 1000
         return 0
     
     def data(self, index):
@@ -90,4 +92,7 @@ class ReportTableModel(AbstractTableModel):
     
     def background(self, index):
         return LIME_GREEN
+
+    def horizontal_header_data(self, section):
+        return self.columns[section]
 

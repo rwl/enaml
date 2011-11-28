@@ -1,7 +1,7 @@
 from traits.api import HasTraits, Instance, Str, Property, Dict
 
 from books import BOOKS
-from trade_table_model import TradeTable
+from trade_table_model import TradeTable, ReportTable
 
 
 class EventsModel(HasTraits):
@@ -26,13 +26,14 @@ class EventsModel(HasTraits):
         self.trade_table.book =  book
 
 
-class MarketDataModel(HasTraits):
-    pass
+class ReportModel(HasTraits):
+
+    report_table = Instance(ReportTable, ())
 
     
 class ViewModel(HasTraits):
 
     events_model = Instance(EventsModel, ())
 
-    market_data_model = Instance(MarketDataModel, ())
+    report_model = Instance(ReportModel, ())
 
