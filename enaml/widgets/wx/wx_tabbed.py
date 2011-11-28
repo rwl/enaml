@@ -3,6 +3,7 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 import wx
+import wx.lib.newevent
 
 from .wx_stacked import WXStacked
 
@@ -16,6 +17,10 @@ _TAB_POSITION_MAP = {
     'left': wx.NB_LEFT,
     'right': wx.NB_RIGHT,
 }
+
+
+#: The custom page change handler
+CustomPageChangedEvent, EVT_CUSTOM_PAGE_CHANGED = wx.lib.newevent.NewEvent()
 
 
 class WXTabbed(WXStacked, AbstractTkTabbed):
@@ -41,6 +46,7 @@ class WXTabbed(WXStacked, AbstractTkTabbed):
         """
         super(WXTabbed, self).bind()
         self.widget.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._on_page_changed)
+        self.widget.Bind(EVT_CUSTOM_PAGE_CHANGED, self._on_custom_page_changed)
 
     #--------------------------------------------------------------------------
     # Implementation 
@@ -108,10 +114,26 @@ class WXTabbed(WXStacked, AbstractTkTabbed):
         control. Synchronizes the index of the shell object.
 
         """
+        # There a few issues with wx here on Windows. The PageChanged 
+        # event *must* be Skipped or the page won't actually change. 
+        # Unfortunately, the event is a CommandEvent, so if this notebook
+        # is nested in another notebook, that parent notebook will also
+        # receive the event. Also, the page selection in the notebook is 
+        # not actually updated until this event handler has run its course.
+        # We *could* get the page number from the event but we still have 
+        # the problem of the event propagating to the parent (and adding 
+        # state to the event doesn't seem to work). The easist way to handle
+        # this is to post a new event that doesn't propogate to the parent.
         event.Skip()
-        # Use event.GetSelection since widget.GetSelection returns the
-        # wrong value during this event handler.
-        self.shell_obj.index = event.GetSelection()
+        evt = CustomPageChangedEvent()
+        wx.PostEvent(self.widget, evt)
+
+    def _on_custom_page_changed(self, event):
+        """ The custom page change event handler that synchronizes the
+        shell object index.
+
+        """
+        self.shell_obj.index = self.widget.GetSelection()
 
     #--------------------------------------------------------------------------
     # Widget Update Methods 
@@ -121,8 +143,11 @@ class WXTabbed(WXStacked, AbstractTkTabbed):
         from the parent class.
 
         """
-        self.widget.SetSelection(index)
-    
+        # Stop a recursive callback from a trait change notification.
+        # Also eliminates unnecessary page change events from firing.
+        if index != self.widget.GetSelection():
+            self.widget.SetSelection(index)
+        
     def update_children(self):
         """ Populates the notebook with the child notebook pages. This
         is an overridden parent class method which sets the title of
