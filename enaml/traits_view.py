@@ -148,7 +148,7 @@ class TraitsContainer(TraitsViewElement):
     control = Property(Any, depends_on='container_class')
     
     #: the list of items
-    items = List(Either(TItem, 'TraitsContainer'))
+    items = List(Either(Str, TItem, 'TraitsContainer'))
     
     def __init__(self, *items, **kwargs):
         items += tuple(kwargs.get('items', ()))
@@ -176,7 +176,7 @@ TForm = TraitsContainer
 class TView(TraitsContainer):
     container_class = "Window"
 
-    items = List(Either(TItem, TraitsContainer))
+    items = List(Either(Str, TItem, TraitsContainer))
 
     def build(self, model):
         if not self.items:
