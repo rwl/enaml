@@ -68,13 +68,29 @@ class TraitControlRegistry(HasTraits):
 
 default_registry = TraitControlRegistry()
 
-class TraitsItem(HasTraits):
+class TraitsViewElement(HasTraits):
+
+    registry = Instance(TraitControlRegistry)
+    
+    def _registry_default(self):
+        return default_registry
+
+class TItem(TraitsViewElement):
+    #: the name of the trait the item is editing
+    name = Str
+    
+    #: the label to display next to the control
+    label = Str
+
     control = Any
     binding = Any(delegate)
-    name = Str
-    label = Str
     label_class = Any
-    registry = Instance(TraitControlRegistry)
+    
+    def __init__(self, name, *body, **kwargs):
+        kwargs['name'] = name
+        body += tuple(kwargs.get('body', ()))
+        kwargs['body'] = body
+        super(TItem, self).__init__(**kwargs)
 
     def build(self, model):
         print self.name
@@ -84,6 +100,7 @@ class TraitsItem(HasTraits):
         control = self.get_control(trait)(
             self.binding('value', 'model.'+self.name),
             simple('read_only', str(not self.isWriteable(trait))),
+            *self.body
         )
         return [label, control]
 
@@ -121,69 +138,65 @@ class TraitsItem(HasTraits):
     
     def _label_class_default(self):
         return make_widget('Label')
-    
-    def _registry_default(self):
-        return default_registry
 
 
-class TraitsGroup(HasTraits):
+class TraitsContainer(TraitsViewElement):
+    #: the name of the container class to use
     container_class = Str("Form")
     
-    container = Property(Any, depends_on='container_class')
+    #: the Enaml Python API widget factory for the container
+    control = Property(Any, depends_on='container_class')
     
-    items = List(Either(TraitsItem, 'TraitsGroup'))
+    #: the list of items
+    items = List(Either(TItem, 'TraitsContainer'))
+    
+    def __init__(self, *items, **kwargs):
+        items += tuple(kwargs.get('items', ()))
+        kwargs['items'] = list(items)
+        super(TraitsContainer, self).__init__(**kwargs)
     
     def build(self, model):
-        contents = sum((item.build(model) for item in self.items), [])
-        return [
-            self.container(
-                *contents
-            )
-        ]
+        contents = []
+        for item in self.items:
+            if isinstance(item, basestring):
+                # we just want default item for a trait
+                contents += TItem(item).build(model)
+            else:
+                contents += item.build(model)
+        return [self.control(*contents)]
     
     @cached_property
     def _get_container(self):
-        return _widget_factories.setdefault(self.container_class,
+        return self.registry.widget_factories.setdefault(self.container_class,
                 make_widget(self.container_class))
-        
-class TraitsView(HasTraits):
-    window_class = Str("Window")
-    
-    window = Property(Any, depends_on='window_class')
 
-    items = List(Either(TraitsItem, TraitsGroup))
+TForm = TraitsContainer
+
+
+class TView(TraitsContainer):
+    container_class = "Window"
+
+    items = List(Either(TItem, TraitsContainer))
 
     def build(self, model):
         if not self.items:
-            self.default_layout(model)
-        else:
-            contents = sum((item.build(model) for item in self.items), [])
-        return self.window(
-            *contents
-        )
-    
+            self.items = self.default_layout(model)
+        return super(TView, self).build(model)
     
     def default_layout(self, model):
-        items = [TraitsItem(name=trait) for trait in sorted(model.trait_names())
-                if trait != 'trait_added' and trait != 'trait_modified']
-        form = TraitsGroup(*items)
-        rteurn [form]
-    
-    @cached_property
-    def _get_window(self):
-        return _widget_factories.setdefault(self.window_class,
-                make_widget(self.window_class))
+        items = [TItem(name=trait) for trait in sorted(model.trait_names())
+                if trait[0] != '_' and trait != 'trait_added' and trait != 'trait_modified']
+        form = TForm(*items)
+        return [form]
+
 
 @enaml_defn
 def build(model, view=None):
     if view is None:
-        items = [TraitsItem(name=trait) for trait in sorted(model.trait_names())
-                if trait[0] != '_' and trait != 'trait_added' and trait != 'trait_modified']
-        form = TraitsGroup(items=items)
-        view = TraitsView(items=[form])
-    return view.build(model)
-    
-    
+        view = TView()
+    return view.build(model)[0]
+
+        
 def edit_traits(model, view=None):
     view = build(model, view)
     view.show(start_app=False)

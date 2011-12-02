@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 
 from traits.api import HasTraits, Str, CInt, Password, Property, cached_property
-from enaml.traits_view import configure_traits, bind
+from enaml.traits_view import configure_traits, bind, TView, TForm, TItem
 
 class Person(HasTraits):
     first_name = Str
@@ -20,4 +20,6 @@ class Person(HasTraits):
 
 if __name__ == '__main__':
     person = Person(first_name='John', last_name='Citizen')
-    configure_traits(person)
+    #view = TraitsView(Form('first_name', 'last_name', 'full_name', 'age', 'password'))
+    view=None
+    configure_traits(person, view)
