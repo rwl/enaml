@@ -2,11 +2,9 @@ from collections import defaultdict
 import weakref
 
 from .layout_manager import AbstractLayoutManager
-from .symbolics import MultiConstraint
+from .layout_helpers import DeferredConstraints
 
 import casuarius
-
-STRENGTH_MAP = casuarius.STRENGTH_MAP
 
 
 class ConstraintsLayout(AbstractLayoutManager):
@@ -123,11 +121,7 @@ class ConstraintsLayout(AbstractLayoutManager):
         """
         solver = self.solver
         for cn in constraints:
-            if isinstance(cn, MultiConstraint):
-                for c in cn:
-                    solver.add_constraint(c)
-            else:
-                solver.add_constraint(cn)
+            solver.add_constraint(cn)
 
     #--------------------------------------------------------------------------
     # Solver Iteration
@@ -157,9 +151,8 @@ class ConstraintsLayout(AbstractLayoutManager):
         with solver.suggest_values([(width_var, width), (height_var, height)], casuarius.medium):
             # Update the geometry of the children with their new
             # solved values.
-            set_solved_geometry = self.set_solved_geometry
             for child in self.traverse_descendants(component):
-                set_solved_geometry(child)
+                child.set_solved_geometry(component)
 
         self._recursion_guard = False
 
@@ -176,59 +169,33 @@ class ConstraintsLayout(AbstractLayoutManager):
             raise RuntimeError(msg)
         
         solver = self.solver
-            
+
         width_var = component.width
         height_var = component.height
 
-        with solver.suggest_values([(width_var, 0.0), (height_var, 0.0)], casuarius.medium):
+        # FIXME: here we pick a 'medium' strength like the window resize but
+        # weight it a little less. Uses of 'medium' in constraints should
+        # override this. In the future, we should add more meaningful Strengths.
+        with solver.suggest_values([(width_var, 0.0), (height_var, 0.0)],
+            default_strength=casuarius.medium, default_weight=0.1):
             min_width = width_var.value
             min_height = height_var.value
 
         return (min_width, min_height)
 
-    def set_solved_geometry(self, component):
-        """ Set the geometry of a component to its solved geometry.
-
-        """
-        x = component.left.value
-        y = component.top.value
-        width = component.width.value
-        height = component.height.value
-        x, y, width, height = (int(round(z)) for z in (x, y, width, height))
-        # This is offset against the root Container. Each Component's geometry
-        # actually needs to be offset against its parent. Walk up the tree and
-        # subtract out the parent's offset.
-        for ancestor in self.walk_up_containers(component):
-            dx, dy = ancestor.pos()
-            x -= dx
-            y -= dy
-        component.set_geometry(x, y, width, height)
-
     def traverse_descendants(self, component):
-        """ Do a preorder traversal of all descendants of the component that
-        participate in the Constraints-base layout.
+        """ Do a preorder traversal of all visible descendants of the component
+        that participate in the Constraints-base layout.
 
         """
         for child in component.children:
-            yield child
-            child_layout = getattr(child, 'layout', None)
-            if child_layout is None or type(child_layout) is type(self):
-                for desc in self.traverse_descendants(child):
-                    yield desc
+            if child.visible:
+                yield child
+                child_layout = getattr(child, 'layout', None)
+                if child_layout is None or type(child_layout) is type(self):
+                    for desc in self.traverse_descendants(child):
+                        yield desc
 
-    def walk_up_containers(self, component):
-        """ Walk up the component hierarchy from a given node and yield the
-        parent Containers, excepting the root Container.
-
-        """
-        root = self.component()
-        if root is None:
-            msg = 'Component weakly referenced by %r disappeared' % self
-            raise RuntimeError(msg)
-        parent = component.parent
-        while parent is not root and parent is not None:
-            yield parent
-            parent = parent.parent
 
     #--------------------------------------------------------------------------
     # Constraint computation
@@ -254,8 +221,8 @@ class ConstraintsLayout(AbstractLayoutManager):
         cns = []
         user_constraints = component.constraints if component.constraints else component.default_user_constraints()
         for constraint in user_constraints + component.container_constraints():
-            if isinstance(constraint, MultiConstraint):
-                cns.extend(constraint)
+            if isinstance(constraint, DeferredConstraints):
+                cns.extend(constraint.get_constraint_list(component))
             else:
                 cns.append(constraint)
         return cns
@@ -312,6 +279,10 @@ class ConstraintsLayout(AbstractLayoutManager):
         the user constraints are updated.
 
         """
+        # FIXME: we can probably do better by storing the old constraints,
+        # getting the new constraints, finding the differences, and telling the
+        # solver to remove/add constraints.
+        # Or maybe not. Timings will tell.
         self._initialized = False
         self.initialize()
 
@@ -322,6 +293,8 @@ class ConstraintsLayout(AbstractLayoutManager):
         it 'hug' or 'resist_clip' attributes change.
 
         """
+        if not self._initialized:
+            return
         component = self.component()
         if component is None:
             msg = 'Component weakly referenced by %r disappeared' % self

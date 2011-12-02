@@ -5,7 +5,6 @@
 from traits.api import TraitError
 
 from .enaml_test_case import EnamlTestCase, required_method
-from enaml.util.enum import Enum
 
 class TestEvents(object):
     """ Events required by the testcase. """
@@ -101,7 +100,7 @@ defn MainWindow(events):
         self.assertEnamlInSync(component, 'minimum', 0)
         self.assertEnamlInSync(component, 'maximum', 100)
         self.assertEnamlInSync(component, 'tick_interval', 10)
-        self.assertEnamlInSync(component, 'tick_position', 'no_ticks')
+        self.assertEnamlInSync(component, 'tick_position', 'bottom')
         self.assertEnamlInSync(component, 'orientation', 'horizontal')
         self.assertEnamlInSync(component, 'single_step', 1)
         self.assertEnamlInSync(component, 'page_step', 10)
@@ -137,7 +136,7 @@ defn MainWindow(events):
         component.value = 70
         component.minimum = 50
         self.assertEnamlInSync(component, 'minimum', 50)
-        self.assertEqual(self.events, [('moved',70)])
+        self.assertEqual(self.events, [])
 
     def test_change_maximum_invalid(self):
         """ Test attempting to set an invalid value to the maximum range of the slider.
@@ -149,7 +148,7 @@ defn MainWindow(events):
         component.minimum = 50
         with self.assertRaises(TraitError):
             component.maximum = 23
-        self.assertEqual(self.events, [('moved',50)])
+        self.assertEqual(self.events, [])
 
     def test_change_minimum_invalid(self):
         """ Test attempting to set an invalid value to the minimum range of the slider.
@@ -171,7 +170,7 @@ defn MainWindow(events):
         self.assertEnamlInSync(component, 'value', 70)
         component.maximum = 50
         self.assertEnamlInSync(component, 'value', 50)
-        self.assertEqual(self.events, [('moved',70), ('moved',50)])
+        self.assertEqual(self.events, [])
 
     def test_change_minimum_and_value(self):
         """ Test setting minimum while the value is out of range.
@@ -181,8 +180,7 @@ defn MainWindow(events):
         component.value = 30
         component.minimum = 50
         self.assertEnamlInSync(component, 'value', 50)
-        self.assertEqual(self.events, [('moved',30), ('moved',50)])
-
+        self.assertEqual(self.events, [])
 
     def test_value_change(self):
         """Test changing the value programmaticaly.
@@ -193,7 +191,7 @@ defn MainWindow(events):
         self.assertEnamlInSync(component, 'value', 1)
         component.value = 34
         self.assertEnamlInSync(component, 'value', 34)
-        self.assertEqual(self.events, [('moved',1), ('moved',34)])
+        self.assertEqual(self.events, [])
 
     def test_invalid_value_change(self):
         """ Test changing the position with the an invalid value
@@ -273,7 +271,6 @@ defn MainWindow(events):
         component.tick_position = 'top'
         self.assertEnamlInSync(component, 'tick_position', 'left')
 
-
     def test_changing_orientaion_tick_policy(self):
         """ Test that the ticks follow the orientation changes
 
@@ -287,7 +284,6 @@ defn MainWindow(events):
         self.component.orientation = 'horizontal'
         self.assertEnamlInSync(component, 'tick_position', 'top')
 
-
     def test_pressing_the_thumb(self):
         """ Test firing events when the thumb is pressed down.
 
@@ -296,7 +292,7 @@ defn MainWindow(events):
         component = self.component
         component.value = 50
         self.send_event(self.widget, TestEvents.PRESSED)
-        self.assertEqual([('moved', 50),'pressed'], events)
+        self.assertEqual(['pressed'], events)
 
     def test_releasing_the_thumb(self):
         """ Test firing events when the thumb is released.
@@ -307,11 +303,11 @@ defn MainWindow(events):
         component.value = 50
 
         self.send_event(self.widget, TestEvents.RELEASED)
-        self.assertEqual([('moved', 50)], events)
+        self.assertEqual([], events)
 
         self.send_event(self.widget, TestEvents.PRESSED)
         self.send_event(self.widget, TestEvents.RELEASED)
-        self.assertEqual([('moved', 50), 'pressed', 'released'], events)
+        self.assertEqual(['pressed', 'released'], events)
 
     def test_moving_the_thumb_programmaticaly(self):
         """ Test firing events when the thumb is moved (programmatically).
@@ -319,9 +315,8 @@ defn MainWindow(events):
         """
         component = self.component
         events = self.events
-
         component.value = 30
-        self.assertEqual(events, [('moved', 30)])
+        self.assertEqual(events, [])
         self.assertEnamlInSync(component, 'value', 30)
 
     def test_move_to_home(self):
@@ -333,7 +328,7 @@ defn MainWindow(events):
         component.value = 50
         self.send_event(self.widget, TestEvents.HOME)
         self.assertEnamlInSync(component, 'value', 0)
-        self.assertEqual(events, [('moved', 50), ('moved', 0)])
+        self.assertEqual(events, [])
 
     def test_move_to_end(self):
         """ Test firing events and value when the thumb is moved to end.
@@ -343,7 +338,7 @@ defn MainWindow(events):
         events = self.events
         self.send_event(self.widget, TestEvents.END)
         self.assertEnamlInSync(component, 'value', 100)
-        self.assertEqual(events, [('moved', 100)])
+        self.assertEqual(events, [])
 
     def test_move_down_by_one_step(self):
         """ Test firing events and value when the thumb is moved by one step down.
@@ -354,7 +349,7 @@ defn MainWindow(events):
         component.value = 50
         self.send_event(self.widget, TestEvents.STEP_DOWN)
         self.assertEnamlInSync(component, 'value', 49)
-        self.assertEqual(events, [('moved', 50), ('moved', 49)])
+        self.assertEqual(events, [])
 
     def test_move_up_by_one_step(self):
         """ Test firing events and value when the thumb is moved by one step up.
@@ -365,7 +360,7 @@ defn MainWindow(events):
         component.value = 50
         self.send_event(self.widget, TestEvents.STEP_UP)
         self.assertEnamlInSync(component, 'value', 51)
-        self.assertEqual(events, [('moved', 50), ('moved', 51)])
+        self.assertEqual(events, [])
 
     def test_move_down_by_one_page(self):
         """ Test firing events and value when the thumb is moved by one page down.
@@ -376,7 +371,7 @@ defn MainWindow(events):
         component.value = 50
         self.send_event(self.widget, TestEvents.PAGE_DOWN)
         self.assertEnamlInSync(component, 'value', 40)
-        self.assertEqual(events, [('moved', 50), ('moved', 40)])
+        self.assertEqual(events, [])
 
     def test_move_up_by_one_page(self):
         """ Test firing events and value when the thumb is moved by one page up.
@@ -387,7 +382,7 @@ defn MainWindow(events):
         component.value = 50
         self.send_event(self.widget, TestEvents.PAGE_UP)
         self.assertEnamlInSync(component, 'value', 60)
-        self.assertEqual(events, [('moved', 50), ('moved', 60)])
+        self.assertEqual(events, [])
 
     #--------------------------------------------------------------------------
     # absrtact methods

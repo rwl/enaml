@@ -26,17 +26,18 @@ DialogResult = Enum(('rejected', 'accepted'))
 #: ============== ======================
 Orientation = Enum(('horizontal', 'vertical'))
 
-#: The position of the tabs in a notebook.
+#: The position of the tabs in a Tabbed container.
 #:
 #: ========== =====================================================
 #: value      description
 #: ========== =====================================================
-#: ``left``   (default) Place tabs to the left of the main content.
-#: ``right``  Place tabs to the right of the main content.
-#: ``top``    Place tabs above the main content.
+#: ``top``    (default) Place tabs above the main content.
 #: ``bottom`` Place tabs below the main content.
+#: ``left``   Place tabs to the left of the main content.
+#: ``right``  Place tabs to the right of the main content.
 #: ========== =====================================================
-TabPosition = Enum(('left', 'right', 'top', 'bottom'))
+TabPosition = Enum(('top', 'bottom', 'left', 'right'))
+
 
 #: Horizontal alingment.
 #:
@@ -60,8 +61,8 @@ HorizontalAlign = Enum(('left', 'right', 'center'))
 #: ``top_to_bottom`` Position children from top to bottom.
 #: ``bottom_to_top`` Position children from bottom to top.
 #: ================= ===============================================
-Direction = Enum(('left_to_right', 'right_to_left',
-                    'top_to_bottom', 'bottom_to_top'))
+Direction = Enum(('left_to_right', 'right_to_left', 
+                  'top_to_bottom', 'bottom_to_top'))
 
 #: A window's modality specifies whether it captures focus.
 #:
@@ -90,8 +91,7 @@ Modality = Enum(('application_modal', 'window_modal'))
 #:               both the left and the right. This might vary with
 #:               :attr:`Orientation`.
 #: ============= =========================================================
-TickPosition = Enum(('no_ticks', 'left', 'right',
-                     'top', 'bottom', 'both'))
+TickPosition = Enum(('no_ticks', 'left', 'right', 'top', 'bottom', 'both'))
 
 #: The ordering of a sort.
 #:
@@ -125,7 +125,7 @@ Validity = Enum(('invalid', 'indermediate', 'acceptable'))
 #: ``strong``       The constraint should be created, but is strong.
 #: ``required``     The constraint should be created, and is required.
 #: ================ ======================================================
-PolicyEnum = Enum('ignore', 'weak', 'strong', 'required')
+PolicyEnum = Enum(('ignore', 'weak', 'strong', 'required'))
 
 
 class Buttons(enum.Enum):

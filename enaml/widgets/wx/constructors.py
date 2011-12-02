@@ -6,9 +6,8 @@ from ...toolkit import Constructor
 
 
 def importer(module_path, name):
-    fromlist = module_path.split('.')
     def _importer():
-        mod = __import__(module_path, fromlist=fromlist)
+        mod = __import__(module_path, fromlist=[name])
         try:
             res = getattr(mod, name)
         except AttributeError:
@@ -61,4 +60,10 @@ WX_CONSTRUCTORS = dict((
     constructor('datetime_edit'),
     constructor('form'),
     constructor('group_box'),
+    constructor('progress_bar'),
+    constructor('stacked'),
+    constructor('scroll_area'),
+    constructor('tabbed'),
+    constructor('tab'),
+    constructor('splitter'),
 ))

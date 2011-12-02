@@ -56,6 +56,15 @@ class AbstractTkComponent(AbstractTkBaseComponent):
         raise NotImplementedError
     
     @abstractmethod
+    def min_size(self):
+        """ Returns the hard minimum (width, height) of the widget, 
+        ignoring any windowing decorations. A widget will not be able
+        to be resized smaller than this value
+
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def set_min_size(self, min_width, min_height):
         """ Set the hard minimum width and height of the widget, ignoring
         any windowing decorations. A widget will not be able to be resized 
@@ -110,6 +119,47 @@ class AbstractTkComponent(AbstractTkBaseComponent):
         """
         raise NotImplementedError
 
+    def set_solved_geometry(self, root):
+        """ Makes the component take the solved geometry and other constrained
+        variables and set its internal values.
+
+        This method can assume that all of its parents have had their geometry
+        set correctly.
+
+        Parameters
+        ----------
+        root : Container
+            The root container that actually performed the layout for this
+            component. Implementations will need this to know how to transform
+            the global solved (x,y) values to local values relative to their
+            immediate parent.
+
+        Returns
+        -------
+        dx, dy : int
+            The offsets needed to convert (x,y) variable values into local
+            positions. These are mostly used in overrides of this method that
+            handle additional variables.
+
+        """
+        shell = self.shell_obj
+        x = shell.left.value
+        y = shell.top.value
+        width = shell.width.value
+        height = shell.height.value
+        x, y, width, height = (int(round(z)) for z in (x, y, width, height))
+        # This is offset against the root Container. Each Component's geometry
+        # actually needs to be offset against its parent. Walk up the tree and
+        # subtract out the parent's offset.
+        dx = 0
+        dy = 0
+        for ancestor in shell.walk_up_containers(root):
+            adx, ady, _, _ = ancestor.geometry()
+            dx += adx
+            dy += ady
+        self.set_geometry(x-dx, y-dy, width, height)
+        return (dx, dy)
+
 
 class Component(BaseComponent):
     """ A BaseComponent subclass that adds a box model and support
@@ -124,63 +174,63 @@ class Component(BaseComponent):
         return BoxModel(self)
 
     #: How strongly a component hugs it's contents' width. Valid strengths
-    #: are 'weak', 'medium', 'strong', 'required' and 'ignore'. 
-    #: The default is 'strong'. This trait should be overridden on a per-control
-    #: basis to specify  a logical default for the given control.
+    #: are 'weak', 'medium', 'strong', 'required' and 'ignore'. Default is 
+    #: 'strong'. This trait should be overridden on a per-control basis to
+    #: specify  a logical default for the given control.
     hug_width = PolicyEnum('strong')
 
     #: How strongly a component hugs it's contents' height. Valid strengths
-    #: are 'weak', 'medium', 'strong', 'required' and 'ignore'. 
-    #: The default is 'strong'. This trait should be overridden on a per-control
-    #: basis to specify  a logical default for the given control.
+    #: are 'weak', 'medium', 'strong', 'required' and 'ignore'. Default is
+    #: 'strong'. This trait should be overridden on a per-control basis to 
+    #: specify  a logical default for the given control.
     hug_height = PolicyEnum('strong')
 
     #: The combination of (hug_width, hug_height).
     hug = Property(Tuple(PolicyEnum, PolicyEnum), depends_on=['hug_width', 'hug_height'])
 
-    #: How strongly a component resists clipping its contents. 
-    #: Valid strengths are 'weak', 'medium', 'strong', 'required'
-    #: and 'ignore'. The default is 'strong' for width.
+    #: How strongly a component resists clipping its contents. Valid 
+    #: strengths are 'weak', 'medium', 'strong', 'required' and 'ignore'. 
+    #: The default is 'strong' for width.
     resist_clip_width = PolicyEnum('strong')
 
-    #: How strongly a component resists clipping its contents. 
-    #: Valid strengths are 'weak', 'medium', 'strong', 'required'
-    #: and 'ignore'. The default is 'strong' for height.
+    #: How strongly a component resists clipping its contents. Valid 
+    #: strengths are 'weak', 'medium', 'strong', 'required' and 'ignore'. 
+    #: The default is 'strong' for height.
     resist_clip_height = PolicyEnum('strong')
 
     #: The combination of (resist_clip_width, resist_clip_height).
     resist_clip = Property(Tuple(PolicyEnum, PolicyEnum), depends_on=['resist_clip_width', 'resist_clip_height'])
 
-    #: An event that should be emitted by the abstract obj when
-    #: its size hint has updated do to some change.
+    #: An event that should be emitted by the abstract obj when its size 
+    #: hint has updated do to some change.
     size_hint_updated = Event
 
-    #: A read-only symbolic object that represents the left 
-    #: boundary of the component
+    #: A read-only symbolic object that represents the left boundary of 
+    #: the component
     left = Property
 
-    #: A read-only symbolic object that represents the top 
-    #: boundary of the component
+    #: A read-only symbolic object that represents the top boundary of 
+    #: the component
     top = Property
 
-    #: A read-only symbolic object that represents the width
-    #: of the component
+    #: A read-only symbolic object that represents the width of the 
+    #: component
     width = Property
 
-    #: A read-only symbolic object that represents the height 
-    #: of the component
+    #: A read-only symbolic object that represents the height of the 
+    #: component
     height = Property
 
-    #: A read-only symbolic object that represents the right 
-    #: boundary of the component
+    #: A read-only symbolic object that represents the right boundary 
+    #: of the component
     right = Property
 
-    #: A read-only symbolic object that represents the bottom 
-    #: boundary of the component
+    #: A read-only symbolic object that represents the bottom boundary 
+    #: of the component
     bottom = Property
 
-    #: A read-only symbolic object that represents the vertical 
-    #: center of the component
+    #: A read-only symbolic object that represents the vertical center 
+    #: of the component
     v_center = Property
 
     #: A read-only symbolic object that represents the horizontal 
@@ -292,6 +342,14 @@ class Component(BaseComponent):
         """
         self.abstract_obj.resize(width, height)
     
+    def min_size(self):
+        """ Returns the hard minimum (width, height) of the widget, 
+        ignoring any windowing decorations. A widget will not be able
+        to be resized smaller than this value
+
+        """
+        return self.abstract_obj.min_size()
+
     def set_min_size(self, min_width, min_height):
         """ Set the hard minimum width and height of the widget. A widget
         should not be able to be resized smaller than this value.
@@ -325,6 +383,26 @@ class Component(BaseComponent):
 
         """
         self.abstract_obj.set_geometry(x, y, width, height)
+
+    def set_solved_geometry(self, root):
+        """ Makes the component take the solved geometry and other constrained
+        variables and set its internal values.
+
+        This method can assume that all of its parents have had their geometry
+        set correctly.
+
+        """
+        return self.abstract_obj.set_solved_geometry(root)
+
+    def walk_up_containers(self, root):
+        """ Walk up the component hierarchy from this component and yield the
+        parent Containers, excepting the given root Container.
+
+        """
+        parent = self.parent
+        while parent is not root and parent is not None:
+            yield parent
+            parent = parent.parent
 
     def _get_toolkit_widget(self):
         """ Property getter for the 'toolkit_widget' property.

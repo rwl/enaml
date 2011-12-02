@@ -14,6 +14,8 @@ class QtWindow(QtContainer, AbstractTkWindow):
     contains other child widgets and layouts.
 
     """
+    _initializing = False
+
     #--------------------------------------------------------------------------
     # Setup methods
     #--------------------------------------------------------------------------
@@ -21,50 +23,41 @@ class QtWindow(QtContainer, AbstractTkWindow):
         """ Intializes the attributes on the QWindow.
 
         """
-        super(QtWindow, self).initialize()
-        self.set_title(self.shell_obj.title)
+        self._initializing = True
+        try:
+            super(QtWindow, self).initialize()
+            self.set_title(self.shell_obj.title)
+        finally:
+            self._initializing = False
 
     #--------------------------------------------------------------------------
     # Implementation
     #--------------------------------------------------------------------------
-    def pos(self):
-        """ Returns the position of the internal toolkit widget as an 
-        (x, y) tuple of integers. The coordinates should be relative to
-        the origin of the widget's parent.
-
-        """
-        # Use the geometry member to avoid window dressing.
-        widget = self.widget
-        geom = widget.geometry()
-        return (geom.x(), geom.y())
-
-    def show(self):
-        """ Displays the window to the screen.
-
-        """
-        if self.widget:
-            self.widget.show()
-            self.widget.raise_()
-
-    def hide(self):
-        """ Hide the window from the screen.
-
-        """
-        if self.widget:
-            self.widget.hide()
-
     def shell_title_changed(self, title):
-        """ The change handler for the 'title' attribute. Not meant for
-        public consumption.
+        """ The change handler for the 'title' attribute.
 
         """
         self.set_title(title)
-
+    
+    #--------------------------------------------------------------------------
+    # Widget Update Methods 
+    #--------------------------------------------------------------------------
     def set_title(self, title):
-        """ Sets the title of the QFrame. Not meant for public
-        consumption.
+        """ Sets the title of the QFrame.
 
         """
-        if self.widget:
-            self.widget.setWindowTitle(title)
+        self.widget.setWindowTitle(title)
+
+    def set_visible(self, visible):
+        """ Overridden from the parent class to raise the window to
+        the front if it should be shown.
+
+        """
+        # Don't show the window if we're not initializing.
+        if not self._initializing:
+            if visible:
+                self.widget.setVisible(True)
+                self.widget.raise_()
+            else:
+                self.widget.setVisible(False)
 

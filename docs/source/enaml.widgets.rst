@@ -40,6 +40,10 @@ user-facing views and the underlying graphical toolkits.
     enaml.widgets.toggle_control.ToggleControl
     enaml.widgets.traitsui_item.TraitsUIItem
     enaml.widgets.window.Window
+    enaml.widgets.form.Form
+    enaml.widgets.group_box.GroupBox
+    enaml.widgets.dialog.Dialog
+    enaml.widgets.progress_bar.ProgressBar
     :parts: 1
 
 Implementation
@@ -77,6 +81,10 @@ class, which wraps an actual toolkit widget.
     enaml.widgets.toggle_control.AbstractTkToggleControl
     enaml.widgets.traitsui_item.AbstractTkTraitsUIItem
     enaml.widgets.window.AbstractTkWindow
+    enaml.widgets.form.AbstractTkForm
+    enaml.widgets.group_box.AbstractTkGroupBox
+    enaml.widgets.dialog.AbstractTkDialog
+    enaml.widgets.progress_bar.AbstractTkProgressBar
     :parts: 1
 
 Standard Widgets
@@ -92,7 +100,6 @@ Abstract base widgets
     enaml.widgets.component.Component
     enaml.widgets.container.Container
     enaml.widgets.control.Control
-    enaml.widgets.window.Window
     enaml.widgets.toggle_control.ToggleControl
     enaml.widgets.bounded_date.BoundedDate
 
@@ -115,6 +122,19 @@ Basic widgets
     enaml.widgets.spin_box.SpinBox
     enaml.widgets.datetime_edit.DatetimeEdit
     enaml.widgets.date_edit.DateEdit
+    enaml.widgets.progress_bar.ProgressBar
+
+Container widgets
+^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+    :toctree: widgets
+    :template: widget.rst
+
+    enaml.widgets.window.Window
+    enaml.widgets.dialog.Dialog
+    enaml.widgets.form.Form
+    enaml.widgets.group_box.GroupBox
 
 Special widgets
 ^^^^^^^^^^^^^^^

@@ -26,10 +26,28 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
     # Setup Methods
     #--------------------------------------------------------------------------
     def create(self):
+        """ Creates the underlying wx widget.
+
+        """
         self.widget = wx.Panel(self.parent_widget())
 
+    def initialize(self):
+        """ Initializes the attributes of the wx widget.
+
+        """
+        super(WXComponent, self).initialize()
+        shell = self.shell_obj
+        self.set_enabled(shell.enabled)
+        if not shell.visible:
+            # Some Containers will turn off the visibility of their 
+            # children entirely on the Qt side when the parent-child 
+            # relationship is made. They have probably already done 
+            # their work, so don't override it in the default case of 
+            # visible=True.
+            self.set_visible(shell.visible)
+
     #--------------------------------------------------------------------------
-    # Implementation
+    # Abstract Implementation
     #--------------------------------------------------------------------------
     @property
     def toolkit_widget(self):
@@ -61,6 +79,14 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
 
         """
         self._resize(self.widget, width, height)
+
+    def min_size(self):
+        """ Returns the hard minimum (width, height) of the widget, 
+        ignoring any windowing decorations. A widget will not be able
+        to be resized smaller than this value
+
+        """
+        return self._min_size(self.widget)
 
     def set_min_size(self, min_width, min_height):
         """ Set the hard minimum width and height of the widget, ignoring
@@ -111,9 +137,28 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
         """
         self._set_geometry(self.widget, x, y, width, height)
 
+    #--------------------------------------------------------------------------
+    # Shell Object Change Handlers 
+    #--------------------------------------------------------------------------
+    def shell_enabled_changed(self, enabled):
+        """ The change handler for the 'enabled' attribute on the shell 
+        object.
+
+        """
+        self.set_enabled(enabled)
+
+    def shell_visible_changed(self, visible):
+        """ The change handler for the 'visible' attribute on the shell
+        object.
+
+        """
+        self.set_visible(visible)
+
     def shell_bg_color_changed(self, color):
-        """ The change handler for the 'bg_color' attribute on the parent.
-        Sets the background color of the internal widget to the given color.
+        """ The change handler for the 'bg_color' attribute on the shell
+        object. Sets the background color of the internal widget to the 
+        given color.
+        
         """
         pass
 
@@ -125,12 +170,31 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
         pass
 
     def shell_font_changed(self, font):
-        """ The change handler for the 'font' attribute on the parent.
-        Sets the font of the internal widget to the given font.
-        For some widgets this may do nothing.
+        """ The change handler for the 'font' attribute on the shell 
+        object. Sets the font of the internal widget to the given font.
+
         """
         pass
 
+    #--------------------------------------------------------------------------
+    # Widget Update Methods 
+    #--------------------------------------------------------------------------
+    def set_enabled(self, enabled):
+        """ Enable or disable the widget.
+
+        """
+        self.widget.Enable(enabled)
+
+    def set_visible(self, visible):
+        """ Show or hide the widget.
+
+        """
+        self.shell_obj.parent.set_needs_update_constraints()
+        self.widget.Show(visible)
+
+    #--------------------------------------------------------------------------
+    # Convenience Methods 
+    #--------------------------------------------------------------------------
     def parent_widget(self):
         """ Returns the logical wx.Window parent for this component.
 
@@ -191,6 +255,14 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
         # just set the frame size and hope for the best.
         widget.SetSize((width, height))
 
+    def _min_size(self, widget):
+        """ Returns the minimum size of the widget. See also
+        'min_size()'.
+
+        """
+        # Wx really needs a GetMinClientSize function...
+        return tuple(widget.GetMinSize())
+
     def _set_min_size(self, widget, min_width, min_height):
         """ Sets the minimum size of the given widget. See also
         'set_min_size(min_width, min_height)'.
@@ -202,6 +274,9 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
         min_width = min_width + (widget_width - client_width)
         min_height = min_height + (widget_height - client_height)
         widget.SetMinSize((min_width, min_height))
+        new_size = (max(widget_width, min_width), max(widget_height, min_height))
+        if new_size != (widget_width, widget_height):
+            widget.SetSize(new_size)
 
     def _pos(self, widget):
         """ Returns the position of the given widget. See also 'pos()'.
@@ -227,7 +302,15 @@ class WXComponent(WXBaseComponent, AbstractTkComponent):
         'geometry()'.
 
         """
-        return widget.GetClientRect().asTuple()
+        # wx widget.GetClientRect() doesn't seem to be what we want.
+        # ofter, GetRect() and GetClientRect() are the same, but when
+        # they aren't GetRect() does the right thing. This is probably
+        # because of asymmetry between GetClientRect and SetDimensions. 
+        # Given that, the existing examples have been tested side by 
+        # side with Qt on Windows, and these current geometry handlers 
+        # "do the right thing" in most cases, plus or minus a pixel or
+        # two difference.
+        return widget.GetRect().asTuple()
 
     def _set_geometry(self, widget, x, y, width, height):
         """ Sets the geometry of the given widget. See also

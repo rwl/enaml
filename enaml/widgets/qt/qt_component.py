@@ -2,7 +2,7 @@
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
-from .qt import QtGui
+from .qt import QtCore, QtGui
 from .qt_base_component import QtBaseComponent
 from .styling import q_color_from_color, q_font_from_font
 
@@ -36,18 +36,26 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
 
         """
         super(QtComponent, self).initialize()
+        self.layout_item = QtGui.QWidgetItem(self.widget)
+        self._reset_layout_margins()
         shell = self.shell_obj
         if shell.bg_color:
-            role = self.widget.backgroundRole()
-            self.set_role_color(role, shell.bg_color)
+            self.set_bg_color(shell.bg_color)
         if shell.fg_color:
-            role = self.widget.foregroundRole()
-            self.set_role_color(role, shell.fg_color)
+            self.set_fg_color(shell.fg_color)
         if shell.font:
             self.set_font(shell.font)
+        self.set_enabled(shell.enabled)
+        if not shell.visible:
+            # Some QtContainers will turn off the visibility of their 
+            # children entirely on the Qt side when the parent-child 
+            # relationship is made. They have probably already done 
+            # their work, so don't override it in the default case of 
+            # visible=True.
+            self.set_visible(shell.visible)
 
     #--------------------------------------------------------------------------
-    # Implementation
+    # Abstract Implementation
     #--------------------------------------------------------------------------
     @property
     def toolkit_widget(self):
@@ -62,8 +70,8 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         windowing decorations, as a (width, height) tuple of integers.
 
         """
-        widget = self.widget
-        return (widget.width(), widget.height())
+        geom = self.layout_item.geometry()
+        return (geom.width(), geom.height())
 
     def size_hint(self):
         """ Returns a (width, height) tuple of integers which represent
@@ -72,7 +80,7 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         manager to determine how much space to allocate the widget.
 
         """
-        size_hint = self.widget.sizeHint()
+        size_hint = self.layout_item.sizeHint()
         return (size_hint.width(), size_hint.height())
 
     def resize(self, width, height):
@@ -80,15 +88,26 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         width and height integers, ignoring any windowing decorations.
 
         """
-        self.widget.resize(width, height)
+        dx, dy, dr, db = self._layout_margins
+        self.widget.resize(width+dx+dr, height+dy+db)
     
+    def min_size(self):
+        """ Returns the hard minimum (width, height) of the widget, 
+        ignoring any windowing decorations. A widget will not be able
+        to be resized smaller than this value
+
+        """
+        widget = self.widget
+        return (widget.minimumWidth(), widget.minimumHeight())
+
     def set_min_size(self, min_width, min_height):
         """ Set the hard minimum width and height of the widget, ignoring
         any windowing decorations. A widget will not be able to be resized 
         smaller than this value.
 
         """
-        self.widget.setMinimumSize(min_width, min_height)
+        dx, dy, dr, db = self._layout_margins
+        self.widget.setMinimumSize(min_width+dx+dr, min_height+dy+db)
 
     def pos(self):
         """ Returns the position of the internal toolkit widget as an
@@ -123,8 +142,9 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         decorations.
 
         """
-        geo = self.widget.geometry()
-        return (geo.x(), geo.y(), geo.width(), geo.height())
+        pdx, pdy, pdr, pdb = self._parent_margins
+        geom = self.layout_item.geometry()
+        return (geom.x()-pdx, geom.y()-pdy, geom.width(), geom.height())
 
     def set_geometry(self, x, y, width, height):
         """ Sets the geometry of the internal widget to the given
@@ -132,7 +152,26 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         decorations.
 
         """
-        self.widget.setGeometry(x, y, width, height)
+        dx, dy, dr, db = self._layout_margins
+        pdx, pdy, pdr, pdb = self._parent_margins
+        self.widget.setGeometry(x-dx+pdx, y-dy+pdy, width+dr+dx, height+db+dy)
+
+    #--------------------------------------------------------------------------
+    # Shell Object Change Handlers 
+    #--------------------------------------------------------------------------
+    def shell_enabled_changed(self, enabled):
+        """ The change handler for the 'enabled' attribute on the shell
+        object.
+
+        """
+        self.set_enabled(enabled)
+
+    def shell_visible_changed(self, visible):
+        """ The change handler for the 'visible' attribute on the shell
+        object.
+
+        """
+        self.set_visible(visible)
 
     def shell_bg_color_changed(self, color):
         """ The change handler for the 'bg_color' attribute on the shell
@@ -140,8 +179,7 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         given color.
         
         """
-        role = self.widget.backgroundRole()
-        self.set_role_color(role, color)
+        self.set_bg_color(color)
     
     def shell_fg_color_changed(self, color):
         """ The change handler for the 'fg_color' attribute on the shell
@@ -149,18 +187,79 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         given color.
 
         """
-        role = self.widget.foregroundRole()
-        self.set_role_color(role, color)
+        self.set_fb_color(color)
 
     def shell_font_changed(self, font):
         """ The change handler for the 'font' attribute on the shell 
         object. Sets the font of the internal widget to the given font.
 
         """
-        self.set_font(font)    
+        self.set_font(font)
 
     #--------------------------------------------------------------------------
-    # Convienence methods
+    # Widget Update Methods
+    #--------------------------------------------------------------------------
+    def set_enabled(self, enabled):
+        """ Enable or disable the widget.
+
+        """
+        self.widget.setEnabled(enabled)
+
+    def set_visible(self, visible):
+        """ Show or hide the widget.
+
+        """
+        self.shell_obj.parent.set_needs_update_constraints()
+        self.widget.setVisible(visible)
+
+    def set_bg_color(self, color):
+        """ Set the background color of the widget.
+
+        """
+        widget = self.widget
+        role = widget.backgroundRole()
+        if not color:
+            palette = QtGui.QApplication.instance().palette(widget)
+            qcolor = palette.color(role)
+            # On OSX, the default color is rendered *slightly* off
+            # so a simple workaround is to tell the widget not to
+            # auto fill the background.
+            widget.setAutoFillBackground(False)
+        else:
+            qcolor = q_color_from_color(color)
+            # When not using qt style sheets to set the background
+            # color, we need to tell the widget to auto fill the 
+            # background or the bgcolor won't render at all.
+            widget.setAutoFillBackground(True)
+        palette = widget.palette()
+        palette.setColor(role, qcolor)
+        widget.setPalette(palette)
+    
+    def set_fg_color(self, color):
+        """ Set the foreground color of the widget.
+
+        """
+        widget = self.widget
+        role = widget.foregroundRole()
+        if not color:
+            palette = QtGui.QApplication.instance().palette(widget)
+            qcolor = palette.color(role)
+        else:
+            qcolor = q_color_from_color(color)
+        palette = widget.palette()
+        palette.setColor(role, qcolor)
+        widget.setPalette(palette)
+
+    def set_font(self, font):
+        """ Set the font of the underlying toolkit widget to an 
+        appropriate QFont.
+
+        """
+        q_font = q_font_from_font(font)
+        self.widget.setFont(q_font)
+
+    #--------------------------------------------------------------------------
+    # Convenienence methods
     #--------------------------------------------------------------------------
     def parent_widget(self):
         """ Returns the logical QWidget parent for this component.
@@ -191,36 +290,26 @@ class QtComponent(QtBaseComponent, AbstractTkComponent):
         for child in self.shell_obj.children:
             yield child.toolkit_widget
 
-    def set_role_color(self, role, color):
-        """ Set the color for a role of a QWidget to the color specified 
-        by the given enaml color or reset the widgets color to the default
-        value for the role if the enaml color is invalid.
+    def _get_layout_margins(self, widget):
+        """ Compute the size of the margins between the layout rectangle and the
+        widget drawing rectangle.
 
         """
-        if not color:
-            palette = QtGui.QApplication.instance().palette(self.widget)
-            qcolor = palette.color(role)
-            # On OSX, the default color is rendered *slightly* off
-            # so a simple workaround is to tell the widget not to
-            # auto fill the background.
-            if role == self.widget.backgroundRole():
-                self.widget.setAutoFillBackground(False)
+        layout_geom = QtGui.QWidgetItem(widget).geometry()
+        widget_geom = widget.geometry()
+        margins = (layout_geom.x() - widget_geom.x(),
+                   layout_geom.y() - widget_geom.y(),
+                   widget_geom.right() - layout_geom.right(),
+                   widget_geom.bottom() - layout_geom.bottom())
+        return margins
+
+    def _reset_layout_margins(self):
+        """ Reset the layout margins for this widget.
+
+        """
+        self._layout_margins = self._get_layout_margins(self.widget)
+        parent = self.parent_widget()
+        if parent is not None:
+            self._parent_margins = self._get_layout_margins(parent)
         else:
-            qcolor = q_color_from_color(color)
-            # When not using qt style sheets to set the background
-            # color, we need to tell the widget to auto fill the 
-            # background or the bgcolor won't render at all.
-            if role == self.widget.backgroundRole():
-                self.widget.setAutoFillBackground(True)
-        palette = self.widget.palette()
-        palette.setColor(role, qcolor)
-        self.widget.setPalette(palette)
-
-    def set_font(self, font):
-        """ Set the font of the underlying toolkit widget to an 
-        appropriate QFont.
-
-        """
-        q_font = q_font_from_font(font)
-        self.widget.setFont(q_font)
-
+            self._parent_margins = (0, 0, 0, 0)

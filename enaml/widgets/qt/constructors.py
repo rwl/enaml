@@ -6,9 +6,8 @@ from ...toolkit import Constructor
 
 
 def importer(module_path, name):
-    fromlist = module_path.split('.')
     def _importer():
-        mod = __import__(module_path, fromlist=fromlist)
+        mod = __import__(module_path, fromlist=[name])
         try:
             res = getattr(mod, name)
         except AttributeError:
@@ -56,7 +55,9 @@ QT_CONSTRUCTORS = dict((
     constructor('spin_box'),
     constructor('traitsui_item'),
     constructor('enable_canvas'),
+    constructor('list_view'),
     constructor('table_view'),
+    constructor('tree_view'),
     constructor('date_edit'),
     constructor('datetime_edit'),
     constructor('form'),
@@ -64,4 +65,8 @@ QT_CONSTRUCTORS = dict((
     constructor('stacked'),
     constructor('scroll_area'),
     constructor('progress_bar'),
+    constructor('tabbed'),
+    constructor('tab'),
+    constructor('splitter'),
 ))
+

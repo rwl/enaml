@@ -40,29 +40,6 @@ class QtDialog(QtWindow, AbstractTkDialog):
     #---------------------------------------------------------------------------
     # Implementation
     #---------------------------------------------------------------------------
-    def show(self):
-        """ Displays this modal dialog to the screen.
-
-        """
-        widget = self.widget
-        if widget:
-            shell = self.shell_obj
-            shell.trait_set(
-                _active = True,
-                opened = True,
-            )
-            widget.setWindowModality(_MODAL_MAP[shell.modality])
-            widget.exec_()
-
-    def hide(self):
-        """ Overridden parent class method. Hiding a dialog is the same
-        as rejecting it.
-
-        """
-        widget = self.widget
-        if widget and widget.visible():
-            self.reject()
-
     def accept(self):
         """ Accept and close the dialog, sending the 'finished' signal.
 
@@ -75,26 +52,37 @@ class QtDialog(QtWindow, AbstractTkDialog):
         """
         self.widget.reject()
 
+    #--------------------------------------------------------------------------
+    # Event Handlers 
+    #--------------------------------------------------------------------------
     def _on_close(self, qt_result):
-        """ Translate from a QDialog result into an Enaml enum.
+        """ The event handler for the dialog's finished signal. 
 
-        The default result is rejection, in case the dialog is closed without
-        a response.
+        This translates from a QDialog result into an Enaml result enum
+        value. The default result is rejection.
 
         """
         if qt_result == QtGui.QDialog.Accepted:
             result = 'accepted'
         else:
             result = 'rejected'
-        self._close_dialog(result)
+        self.shell_obj.trait_set(_result=result, _active=False, closed=result)
 
-    def _close_dialog(self, result):
-        """ Destroy the dialog, fire events, and set status attributes.
+    #--------------------------------------------------------------------------
+    # Widget Update Methods
+    #--------------------------------------------------------------------------
+    def set_visible(self, visible):
+        """ Overridden from the parent class to properly launch and close 
+        the dialog.
 
         """
-        self.shell_obj.trait_set(
-            _result = result,
-            _active = False,
-            closed = result,
-        )
+        if not self._initializing:
+            widget = self.widget
+            shell = self.shell_obj
+            if visible:
+                shell.trait_set(_active=True, opened=True)
+                widget.setWindowModality(_MODAL_MAP[shell.modality])
+                widget.exec_()
+            else:
+                self.reject()
 

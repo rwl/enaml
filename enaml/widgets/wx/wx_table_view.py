@@ -8,7 +8,7 @@ import wx.grid
 from .wx_control import WXControl
 from ..table_view import AbstractTkTableView
 
-from ...item_models.abstract_item_model import AbstractItemModel
+from ...item_models.abstract_item_model import AbstractItemModel, ITEM_IS_EDITABLE
 
 
 GridCellAttr = wx.grid.GridCellAttr
@@ -78,6 +78,13 @@ class AbstractItemModelTable(wx.grid.PyGridTableBase):
             
         return attr
 
+    def SetValue(self, row, col, val):
+        item_model = self._item_model
+        index = item_model.index(row, col, None)
+        flags = item_model.flags(index)
+        if flags & ITEM_IS_EDITABLE:
+            item_model.set_data(index, val)
+
     def GetRowLabelValue(self, row):
         return self._vert_header_data(row)
 
@@ -87,10 +94,6 @@ class AbstractItemModelTable(wx.grid.PyGridTableBase):
 
 class WXTableView(WXControl, AbstractTkTableView):
     """ A wxPython implementation of TableView.
-
-    See Also
-    --------
-    TableView
 
     """
     #: The underlying model.
@@ -103,7 +106,8 @@ class WXTableView(WXControl, AbstractTkTableView):
         """ Create the underlying wx.grid.Grid control.
 
         """
-        self.widget = wx.grid.Grid(self.parent_widget())
+        style = wx.WANTS_CHARS | wx.FULL_REPAINT_ON_RESIZE
+        self.widget = wx.grid.Grid(self.parent_widget(), style=style)
 
     def initialize(self):
         """ Intialize the widget with the attributes of this instance.
@@ -160,5 +164,6 @@ class WXTableView(WXControl, AbstractTkTableView):
         # which is the size hint implementation for QTableView.
         # The wx GetBestSize() call returns the size for the entire
         # table, which may be millions of pixels for large tables.
+        # It also takes forever and a year to compute.
         return (256, 192)
-
+        

@@ -18,6 +18,8 @@ class WXWindow(WXContainer, AbstractTkWindow):
     to be delegated to the wx.Frame and some to the wx.Window.
 
     """
+    _initializing = False
+
     #--------------------------------------------------------------------------
     # Setup methods
     #--------------------------------------------------------------------------
@@ -35,37 +37,50 @@ class WXWindow(WXContainer, AbstractTkWindow):
         """ Intializes the attributes on the wx.Frame.
 
         """
-        super(WXWindow, self).initialize()
-        shell = self.shell_obj
-        self.set_title(shell.title)
+        self._initializing = True
+        try:
+            super(WXWindow, self).initialize()
+            self.set_title(self.shell_obj.title)
+        finally:
+            self._initializing = False
 
     #--------------------------------------------------------------------------
     # Implementation
     #--------------------------------------------------------------------------
-    def show(self):
-        """ Displays the window to the screen.
-
-        """
-        self._frame.Show()
-
-    def hide(self):
-        """ Hide the window from the screen.
-
-        """
-        self._frame.Hide()
-
     def shell_title_changed(self, title):
         """ The change handler for the 'title' attribute.
 
         """
         self.set_title(title)
-
+    
+    #--------------------------------------------------------------------------
+    # Widget Update Methods
+    #--------------------------------------------------------------------------
     def set_title(self, title):
         """ Sets the title of the frame.
 
         """
         self._frame.SetTitle(title)
     
+    def set_visible(self, visible):
+        """ Overridden from the parent class to raise the window to
+        the front if it should be shown.
+
+        """
+        # Don't show the window if we're not initializing.
+        if not self._initializing:
+            if visible:
+                # Wx doesn't reliably emit resize events when making a 
+                # ui visible. So this extra call to update cns helps make 
+                # sure things are arranged nicely.
+                self.shell_obj.set_needs_update_constraints()
+                self._frame.Show()
+            else:
+                self._frame.Hide()
+
+    #--------------------------------------------------------------------------
+    # Overridden Geometry Methods 
+    #--------------------------------------------------------------------------
     def resize(self, width, height):
         """ Overridden parent class method to do the resize on the 
         internal wx.Frame object.
@@ -73,6 +88,13 @@ class WXWindow(WXContainer, AbstractTkWindow):
         """
         self._resize(self._frame, width, height)
     
+    def min_size(self):
+        """ Overridden parent class method to get the min size on 
+        the internal wx.Frame object.
+
+        """
+        return self._min_size(self._frame)
+        
     def set_min_size(self, min_width, min_height):
         """ Overridden parent class method to set the min size on the
         internal wx.Frame object.
