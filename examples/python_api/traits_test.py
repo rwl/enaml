@@ -3,7 +3,7 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 
-from traits.api import HasTraits, Str, CInt, Password, Enum, List, Property, cached_property
+from traits.api import HasTraits, Str, CInt, Range, Password, Enum, List, Property, cached_property
 from enaml.traits_view import configure_traits, bind, TView, TForm, TItem, TVSplit
 
 class Person(HasTraits):
@@ -11,7 +11,8 @@ class Person(HasTraits):
     last_name = Str
     gender = Enum(values='genders')
     genders = List(Str, ['Female', 'Male'])
-    age = CInt(enaml_control='ErrorField')
+    #age = CInt(enaml_control='ErrorField')
+    age = Range(1,500)
     password = Password
     
     full_name = Property(Str, depends_on=['first_name', 'last_name'], binding=bind)

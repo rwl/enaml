@@ -54,7 +54,7 @@ class TraitControlRegistry(HasTraits):
         """
         from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat,
                 BaseComplex, BaseStr, BaseUnicode, String, Code, HTML, Password,
-                Enum,)
+                Range, Enum,)
         return {
             BaseBool: 'CheckBox',
             BaseInt: 'IntField',
@@ -68,6 +68,7 @@ class TraitControlRegistry(HasTraits):
             HTML: 'Html',
             Password: 'PasswordField',
             Enum: TEnumEditor,
+            Range: TRangeEditor,
         }
 
 default_registry = TraitControlRegistry()
@@ -79,7 +80,17 @@ def trait_attribute_expression(trait, name, attr):
         return 'eval(object.traits()["%s"].trait_type.%s)' % (name, attr)
     else:
         return 'object.traits()["%s"].trait_type.%s' % (name, attr)
-                
+
+def TRangeEditor(trait, name):
+    low_binding = bind('low', trait_attribute_expression(trait, name, '_low'))
+    high_binding = bind('high', trait_attribute_expression(trait, name, '_high'))
+    value_binding = bind('high', trait_attribute_expression(trait, name, '_high'))
+        
+    def widget(*args):
+        args = (low_binding, high_binding,) + args
+        return EnamlPyCall('SpinBox', *args)
+        
+    return widget
 
 def TEnumEditor(trait, name):
     values_binding = bind('items', trait_attribute_expression(trait, name, 'values'))
@@ -121,6 +132,7 @@ class TItem(TraitsViewElement):
         binding = self.binding
         control = self.get_control(trait)(
             self.binding('value', 'object.'+self.name),
+            bind('bg_color', "'error' if error else 'none'"),
             simple('read_only', str(not self.isWriteable(trait))),
             *self.body
         )
