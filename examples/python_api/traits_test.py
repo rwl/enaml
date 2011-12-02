@@ -3,12 +3,14 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 
-from traits.api import HasTraits, Str, CInt, Password, Property, cached_property
-from enaml.traits_view import configure_traits, bind, TView, TForm, TItem
+from traits.api import HasTraits, Str, CInt, Password, Enum, List, Property, cached_property
+from enaml.traits_view import configure_traits, bind, TView, TForm, TItem, TVSplit
 
 class Person(HasTraits):
     first_name = Str
     last_name = Str
+    gender = Enum(values='genders')
+    genders = List(Str, ['Female', 'Male'])
     age = CInt(enaml_control='ErrorField')
     password = Password
     
@@ -19,7 +21,10 @@ class Person(HasTraits):
         return self.first_name + ' ' + self.last_name
 
 if __name__ == '__main__':
-    person = Person(first_name='John', last_name='Citizen')
-    #view = TraitsView(Form('first_name', 'last_name', 'full_name', 'age', 'password'))
-    view=None
+    person = Person(first_name='John', last_name='Citizen', gender='Male')
+    view = TView(TVSplit(
+        TForm('first_name', 'last_name', 'full_name'),
+        TForm('gender', 'age', 'password')
+    ))
+    #view=None
     configure_traits(person, view)

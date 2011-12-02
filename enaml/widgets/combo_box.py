@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 from abc import abstractmethod
 
-from traits.api import List, Any, Event, Callable, Int, Instance, Property, Str
+from traits.api import List, CList, Any, Event, Callable, Int, Instance, Property, Str
 
 from .control import Control, AbstractTkControl
 
@@ -44,7 +44,7 @@ class ComboBox(Control):
 
     """
     #: The objects that compose the collection.
-    items = List(Any)
+    items = CList(Any)
 
     #: The currently selected item from the collection. If this value
     #: is set to a value that is not in :attr:`items` then the computed 

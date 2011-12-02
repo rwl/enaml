@@ -2,6 +2,7 @@
 #  Copyright (c) 2011, Enthought, Inc.
 #  All rights reserved.
 #------------------------------------------------------------------------------
+from types import CodeType
 
 from traits.api import HasTraits, Str, Any, Dict, List, Either, Instance, Property, cached_property
 from traits.trait_handlers import _read_only, _write_only, _undefined_get, _undefined_set
@@ -9,6 +10,7 @@ from traits.trait_handlers import _read_only, _write_only, _undefined_get, _unde
 import enaml
 with enaml.imports():
     from enaml.stdlib.fields import *
+    from enaml.stdlib.containers import *
 
 from .parsing.builders import EnamlPyCall, simple, bind, delegate, notify, enaml_defn, make_widget
 
@@ -51,7 +53,8 @@ class TraitControlRegistry(HasTraits):
         
         """
         from traits.api import (BaseBool, BaseInt, BaseLong, BaseFloat,
-                BaseComplex, BaseStr, BaseUnicode, String, Code, HTML, Password)
+                BaseComplex, BaseStr, BaseUnicode, String, Code, HTML, Password,
+                Enum,)
         return {
             BaseBool: 'CheckBox',
             BaseInt: 'IntField',
@@ -64,9 +67,28 @@ class TraitControlRegistry(HasTraits):
             Code: 'CodeEditor',
             HTML: 'Html',
             Password: 'PasswordField',
+            Enum: TEnumEditor,
         }
 
 default_registry = TraitControlRegistry()
+
+
+def trait_attribute_expression(trait, name, attr):
+    value = getattr(trait.trait_type, attr)
+    if isinstance(value, CodeType):
+        return 'eval(object.traits()["%s"].trait_type.%s)' % (name, attr)
+    else:
+        return 'object.traits()["%s"].trait_type.%s' % (name, attr)
+                
+
+def TEnumEditor(trait, name):
+    values_binding = bind('items', trait_attribute_expression(trait, name, 'values'))
+        
+    def widget(*args):
+        args = (values_binding,) + args
+        return EnamlPyCall('ComboBox', *args)
+        
+    return widget
 
 class TraitsViewElement(HasTraits):
 
@@ -92,13 +114,13 @@ class TItem(TraitsViewElement):
         kwargs['body'] = body
         super(TItem, self).__init__(**kwargs)
 
-    def build(self, model):
+    def build(self, object):
         print self.name
-        trait = model.traits()[self.name]
+        trait = object.traits()[self.name]
         label = self.label_class(simple('text', repr(self.label)))
         binding = self.binding
         control = self.get_control(trait)(
-            self.binding('value', 'model.'+self.name),
+            self.binding('value', 'object.'+self.name),
             simple('read_only', str(not self.isWriteable(trait))),
             *self.body
         )
@@ -148,21 +170,21 @@ class TraitsContainer(TraitsViewElement):
     control = Property(Any, depends_on='container_class')
     
     #: the list of items
-    items = List(Either(Str, TItem, 'TraitsContainer'))
+    items = List(Either(Str, TItem, Instance('TraitsContainer')))
     
     def __init__(self, *items, **kwargs):
         items += tuple(kwargs.get('items', ()))
         kwargs['items'] = list(items)
         super(TraitsContainer, self).__init__(**kwargs)
     
-    def build(self, model):
+    def build(self, object):
         contents = []
         for item in self.items:
             if isinstance(item, basestring):
                 # we just want default item for a trait
-                contents += TItem(item).build(model)
+                contents += TItem(item).build(object)
             else:
-                contents += item.build(model)
+                contents += item.build(object)
         return [self.control(*contents)]
     
     @cached_property
@@ -172,36 +194,42 @@ class TraitsContainer(TraitsViewElement):
 
 TForm = TraitsContainer
 
+class THSplit(TraitsContainer):
+    container_class = 'HSplit'
+
+class TVSplit(TraitsContainer):
+    container_class = 'VSplit'
+    
 
 class TView(TraitsContainer):
     container_class = "Window"
 
     items = List(Either(Str, TItem, TraitsContainer))
 
-    def build(self, model):
+    def build(self, object):
         if not self.items:
-            self.items = self.default_layout(model)
-        return super(TView, self).build(model)
+            self.items = self.default_layout(object)
+        return super(TView, self).build(object)
     
-    def default_layout(self, model):
-        items = [TItem(name=trait) for trait in sorted(model.trait_names())
+    def default_layout(self, object):
+        items = [TItem(name=trait) for trait in sorted(object.trait_names())
                 if trait[0] != '_' and trait != 'trait_added' and trait != 'trait_modified']
         form = TForm(*items)
         return [form]
 
 
 @enaml_defn
-def build(model, view=None):
+def build(object, view=None):
     if view is None:
         view = TView()
-    return view.build(model)[0]
+    return view.build(object)[0]
 
         
-def edit_traits(model, view=None):
-    view = build(model, view)
+def edit_traits(object, view=None):
+    view = build(object, view)
     view.show(start_app=False)
     return view
     
-def configure_traits(model, view=None):
-    view = build(model, view)
+def configure_traits(object, view=None):
+    view = build(object, view)
     view.show()
