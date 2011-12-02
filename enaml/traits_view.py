@@ -166,7 +166,7 @@ class TraitsContainer(TraitsViewElement):
         return [self.control(*contents)]
     
     @cached_property
-    def _get_container(self):
+    def _get_control(self):
         return self.registry.widget_factories.setdefault(self.container_class,
                 make_widget(self.container_class))
 
