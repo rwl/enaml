@@ -150,3 +150,25 @@ def start_event_loop_qt4(app=None):
 #-----------------------------------------------------------------------------
 # gtk
 #-----------------------------------------------------------------------------
+
+#-----------------------------------------------------------------------------
+# muntjac
+#-----------------------------------------------------------------------------
+
+def get_app_muntjac(*args, **kwargs):
+    """Create a new Muntjac app or return an existing one."""
+    from muntjac.application import SingletonApplication
+    app = SingletonApplication.get()
+    return app
+
+
+def start_event_loop_muntjac(app=None):
+    """Start the Muntjac event loop in a consistent manner."""
+    from muntjac.main import muntjac
+    from muntjac.terminal.gwt.server.application_servlet \
+        import SingletonApplicationServlet
+
+    if app is None:
+        app = get_app_muntjac()
+    muntjac(app, nogui=True, debug=True,
+            servletClass=SingletonApplicationServlet)

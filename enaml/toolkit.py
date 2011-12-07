@@ -267,13 +267,13 @@ class Toolkit(dict):
     def _get_control_exception_handler(self):
         """ Returns the function for handling exceptions on a control object
         that would otherwise be swallowed.
-        
+
         """
         return self['__control_exception_handler__']
-    
+
     def _set_control_exception_handler(self, val):
         self['__control_exception_handler__'] = val
-        
+
     control_exception_handler = property(_get_control_exception_handler, _set_control_exception_handler)
 
 def default_toolkit():
@@ -345,3 +345,29 @@ def wx_toolkit():
 
     return toolkit
 
+
+def muntjac_toolkit():
+    """ Creates and return a toolkit object for the Muntjac backend.
+
+    """
+    from .operators import OPERATORS
+    from .widgets.muntjac.constructors import MUNTJAC_CONSTRUCTORS
+    from .util.guisupport import get_app_muntjac, start_event_loop_muntjac
+    from .widgets.muntjac.styling import MUNTJAC_STYLE_SHEET
+    from .widgets.muntjac.utils import invoke_later
+    from .widgets.layout.layout_helpers import LAYOUT_HELPERS
+
+    utils = {}
+
+    toolkit = Toolkit(MUNTJAC_CONSTRUCTORS)
+
+    toolkit.create_app = get_app_muntjac
+    toolkit.start_app = start_event_loop_muntjac
+    toolkit.style_sheet = MUNTJAC_STYLE_SHEET
+    toolkit.invoke_later = invoke_later
+    toolkit.control_exception_handler = None
+    toolkit.update(utils)
+    toolkit.update(OPERATORS)
+    toolkit.update(LAYOUT_HELPERS)
+
+    return toolkit
