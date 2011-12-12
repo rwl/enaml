@@ -3,6 +3,7 @@
 #  All rights reserved.
 #------------------------------------------------------------------------------
 from abc import ABCMeta, abstractmethod, abstractproperty
+from collections import deque
 from functools import wraps
 
 from traits.api import (
@@ -287,6 +288,12 @@ class BaseComponent(HasStrictTraits):
     #: Whether or not the widget is visible.
     visible = Bool(True)
 
+    #: Whether the component has been initialized for not. This will be set to
+    #: True after all of the setup() steps defined here are completed. It should
+    #: not be changed afterwards. This can be used to trigger certain actions
+    #: that need to be called after the component has been set up.
+    initialized = Bool(False)
+
     #: The background color of the widget
     bg_color = Property(ColorTrait, depends_on=['_user_bg_color', '_style_bg_color'])
     
@@ -327,6 +334,10 @@ class BaseComponent(HasStrictTraits):
     #: The optional style class for the StyleSheet system.
     style_class = Str
 
+    #: An optional name to give to this component to assist in finding
+    #: it in the tree.
+    name = Str
+    
     def add_child(self, child):
         """ Add the child to this component.
 
@@ -393,6 +404,40 @@ class BaseComponent(HasStrictTraits):
         self.children[idx] = other_child
         self.children[other_idx] = child
 
+    def traverse(self):
+        """ Yields all of the nodes in the tree in breadth first order.
+
+        """
+        deq = deque([self])
+        while deq:
+            item = deq.popleft()
+            yield item
+            deq.extend(item.children)
+    
+    def find_by_name(self, name):
+        """ Find a component in this tree by name. 
+
+        This method will traverse the tree of components, breadth first,
+        from this point downward, looking for a component with the given
+        name. The first one with the given name is returned, or None if
+        no component is found.
+
+        Parameters
+        ----------
+        name : string
+            The name of the component for which to search.
+        
+        Returns
+        -------
+        result : BaseComponent or None
+            The first component found with the given name, or None if 
+            no component is found.
+        
+        """
+        for cmpnt in self.traverse():
+            if cmpnt.name == name:
+                return cmpnt
+
     def set_style_sheet(self, style_sheet):
         """ Sets the style sheet for this component.
 
@@ -419,6 +464,8 @@ class BaseComponent(HasStrictTraits):
         Each of these methods are performed top down. Setup hooks are 
         called for items 3, 4, and 5.
 
+        After step 6, the `initialized` trait is set to True.
+
         Parameters
         ----------
         parent : native toolkit widget, optional
@@ -432,6 +479,8 @@ class BaseComponent(HasStrictTraits):
         self.initialize()
         self.bind()
         self.set_listeners()
+
+        self.initialized = True
 
     def set_parent_refs(self):
         """ Assigns a reference to self for every child in children and 

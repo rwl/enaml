@@ -49,16 +49,17 @@ class Window(Container):
         displaying itself to the screen.
 
         """
-        # XXX we shouldn't need to .setup() every time.
-        self.setup()
-
-        # For now, compute the initial size based using the minimum
-        # size routine from the layout. We'll probably want to have
-        # an initial_size optional attribute or something at some point.
-        size = self.layout.calc_min_size()
-        self.resize(*size)
+        app = self.toolkit.create_app()
+        if not self.initialized:
+            self.setup()
+            # For now, compute the initial size based using the minimum
+            # size routine from the layout. We'll probably want to have
+            # an initial_size optional attribute or something at some point.
+            size = self.layout.calc_min_size()
+            self.resize(*size)
         self.visible = True
-
+        self.toolkit.start_app(app)
+        
     def hide(self):
         """ Hide the window, but do not destroy the underlying widgets.
 
